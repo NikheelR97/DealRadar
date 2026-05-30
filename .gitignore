@@ -1,0 +1,58 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build output ──────────────────────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# ── Environment / secrets — NEVER commit these ────────────────────────────────
+.env
+.env.local
+.env.*.local
+# .env.example is committed intentionally
+
+# ── Coverage & test artefacts ─────────────────────────────────────────────────
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── OS artefacts ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── TypeScript cache ──────────────────────────────────────────────────────────
+*.tsbuildinfo
+
+# ── Docker local overrides ────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Cloudflare Tunnel credentials (contain secrets) ───────────────────────────
+.cloudflared/*.json
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+.cache/
+tmp/

@@ -1,0 +1,67 @@
+# DealRadar — three-service compose (HANDOVER §8).
+# Only the frontend host port is exposed; all inter-service traffic uses service names.
+
+services:
+  postgres:
+    image: postgres:16.2-alpine3.19
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Migrations are applied on first init, alphabetically (V1__, V2__, …).
+      - ./backend/src/db/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - deal-radar-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: '3001'
+      DATABASE_URL: ${DATABASE_URL}
+      SESSION_SECRET: ${SESSION_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-}
+      PUPPETEER_EXECUTABLE_PATH: ${PUPPETEER_EXECUTABLE_PATH:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - deal-radar-net
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${HOST_PORT:-8080}:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - deal-radar-net
+
+volumes:
+  postgres-data:
+
+networks:
+  deal-radar-net:
+    driver: bridge

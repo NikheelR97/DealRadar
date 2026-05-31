@@ -71,7 +71,10 @@ function hostnameOf(url: string): string {
 
 function asScraperError(err: unknown, retailer: string): ScraperError {
   if (err instanceof ScraperError) return err;
-  return new ScraperError('network_error', retailer, err instanceof Error ? err.message : String(err));
+  // A raw (non-ScraperError) throw is unexpected — parse()/fetchHtml only ever throw
+  // ScraperError. Classify it 'unknown' (non-retryable) so a real bug surfaces fast
+  // instead of being retried MAX times and mislabeled as a transient network error.
+  return new ScraperError('unknown', retailer, err instanceof Error ? err.message : String(err));
 }
 
 export { REGISTRY };

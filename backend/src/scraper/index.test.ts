@@ -78,13 +78,14 @@ describe('scrapeProduct', () => {
     expect(delay).toHaveBeenCalledTimes(MAX_SCRAPE_RETRIES - 1); // no delay after the last attempt
   });
 
-  it('wraps an unexpected raw error as ScraperError(network_error)', async () => {
+  it('wraps an unexpected raw error as ScraperError(unknown) and does NOT retry it', async () => {
     const fetchHtml = vi.fn(async () => {
-      throw new Error('socket hang up');
+      throw new Error('socket hang up'); // raw throw = unexpected bug, not transient
     });
     await expect(scrapeProduct(KOODOO_URL, deps({ fetchHtml }))).rejects.toMatchObject({
-      type: 'network_error',
+      type: 'unknown',
     });
+    expect(fetchHtml).toHaveBeenCalledOnce();
   });
 
   it('succeeds on a later attempt after a transient failure', async () => {

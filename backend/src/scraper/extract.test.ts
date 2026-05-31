@@ -27,6 +27,12 @@ describe('parsePrice', () => {
     expect(parsePrice('R nothing')).toBeNull();
     expect(parsePrice('0')).toBeNull();
   });
+
+  it('returns null for ambiguous multi-dot input instead of guessing wrong', () => {
+    // Dot-as-thousands ("1.299.00") is not ZAR convention — refuse rather than
+    // silently record 1.299 or 129900.
+    expect(parsePrice('R 1.299.00')).toBeNull();
+  });
 });
 
 describe('availabilityToInStock', () => {

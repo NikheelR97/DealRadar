@@ -20,16 +20,22 @@ export interface StructuredProduct {
 
 /**
  * Parse a price string to a number, or null. Guard-clause chain (HANDOVER Law 1).
- * Handles ZAR formats: "R 12 999.00", "R12,999", "12999.00". Thousands separators
- * may be spaces or commas; the decimal point (if any) is the last dot.
+ *
+ * Assumes **ZAR formatting** (HANDOVER §4 — every retailer is South African):
+ * `.` is the decimal point; spaces and commas are thousands separators. So
+ * "R 12 999.00", "R12,999.99", and "12999" all parse. Input that is ambiguous or
+ * malformed (e.g. dot used as a thousands separator → "1.299.00") yields `null`
+ * rather than a wrong guess, so a bad value never silently enters price history.
+ * European decimal-comma formatting is intentionally NOT supported.
  */
 export function parsePrice(raw: string | null | undefined): number | null {
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();
   if (trimmed.length === 0) return null;
-  // Drop currency symbols/letters and thousands separators, keep digits + dots.
+  // Drop currency symbols/letters and thousands separators (spaces, commas).
   const cleaned = trimmed.replace(/[^\d.]/g, '');
   if (cleaned.length === 0) return null;
+  if ((cleaned.match(/\./g)?.length ?? 0) > 1) return null; // >1 dot ⇒ malformed
   const value = Number(cleaned);
   if (!Number.isFinite(value) || value <= 0) return null;
   return Math.round(value * 100) / 100;

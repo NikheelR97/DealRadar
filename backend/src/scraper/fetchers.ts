@@ -41,7 +41,12 @@ export async function httpFetchHtml(url: string): Promise<string> {
   if (res.status === 403 || res.status === 429 || res.status === 503) {
     throw new ScraperError('blocked', retailer, `status ${res.status}`);
   }
-  if (!res.ok) throw new ScraperError('network_error', retailer, `status ${res.status}`);
+  if (!res.ok) {
+    // 5xx and 408 are transient (retry); other 4xx are permanent (404/410/…) so we
+    // fail closed with a non-retryable 'unknown' rather than fetching 3× pointlessly.
+    const transient = res.status >= 500 || res.status === 408;
+    throw new ScraperError(transient ? 'network_error' : 'unknown', retailer, `status ${res.status}`);
+  }
   const ctype = res.headers.get('content-type') ?? '';
   if (!ctype.includes('text/html')) throw new ScraperError('parse_error', retailer, ctype);
   return res.text();

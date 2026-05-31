@@ -56,6 +56,35 @@ describe.each([
   });
 });
 
+describe('Tier A — extraction precedence (cheerio factory)', () => {
+  it('lets a CSS sold-out marker override a stale in-stock JSON-LD price', () => {
+    // JSON-LD still advertises an in-stock price, but the DOM is marked sold out —
+    // the explicit out-of-stock signal must win so we never record a phantom price.
+    const html =
+      '<html><head><script type="application/ld+json">' +
+      '{"@type":"Product","name":"AirPods","offers":{"price":"4299","availability":"InStock"}}' +
+      '</script></head><body>' +
+      '<span class="price--sold-out"><span class="money" data-product-price>R 4 299.00</span></span>' +
+      '</body></html>';
+    const result = koodoo.parse(html, URL_FOR);
+    expect(result.price).toBeNull();
+    expect(result.inStock).toBe(false);
+  });
+
+  it('resolves the price from product:price:amount meta when JSON-LD and CSS are absent', () => {
+    // No JSON-LD, no on-page price node — only the OpenGraph price meta carries it.
+    const html =
+      '<html><head>' +
+      '<meta property="og:title" content="Meta Widget" />' +
+      '<meta property="product:price:amount" content="1599.00" />' +
+      '</head><body><h1>Meta Widget</h1></body></html>';
+    const result = koodoo.parse(html, URL_FOR);
+    expect(result.price).toBe(1599);
+    expect(result.inStock).toBe(true);
+    expect(result.name).toBe('Meta Widget');
+  });
+});
+
 describe('Tier A — istore out-of-stock marker', () => {
   it('returns price:null when an .out-of-stock marker is present', () => {
     const html =

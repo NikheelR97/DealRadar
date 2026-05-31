@@ -242,7 +242,24 @@ match. Blocks deployment.
 
 ---
 
-## S0/S1 Deferred Issues (Santa-Loop Round 2 Findings — 2026-05-31)
+## Deferral Policy (standing rule)
+
+**Whenever we defer anything** — a review finding, a known limitation, a "good
+idea but not now," a workaround, a TODO that outlives the PR — it MUST be logged in
+the Deferral Log below **in the same change that creates the deferral**. Nothing is
+deferred silently. Each entry records three things:
+
+- **Finding** — what is being deferred, specifically enough to act on later.
+- **Why deferred** — the reason it is safe/correct to leave for now.
+- **Revisit at** — the concrete trigger to come back: a named sprint (e.g. **S9**),
+  or an explicit condition when no sprint owns it (e.g. "if row counts exceed 10^13").
+
+If a deferral has no plausible revisit trigger, it is not a deferral — either do it
+now or decide explicitly not to do it. Group entries by the sprint that raised them.
+
+## Deferral Log
+
+### S0/S1 (Santa-Loop Round 2 Findings — 2026-05-31)
 
 The santa-loop dual-review passed on round 2. The following were raised as
 non-blocking suggestions and **explicitly deferred** to named future sprints.
@@ -255,6 +272,14 @@ Revisit them when the corresponding sprint opens.
 | 3 | **Two defensively-unreachable branches in `me.ts`**: the `!req.user` guard after `requireLogin` (line ~33, cannot fire because `requireLogin` already throws) and the `?? 'invalid url'` fallback (line ~59, all `UrlValidation` reasons are covered). Both count as uncovered branches in the coverage report but are harmless. | Removing them tightens the code but adds zero safety value. The coverage tool sees them as branches; they don't affect the 85/80 gate. | **S9** — tidy during the hardening/refactor pass. |
 | 4 | **`getPublicItemHistory` returns `200 []` (not `404`) when the product has no public tracker**. This is an intentional anonymity choice — the public API never reveals whether a product exists but is private. | Both reviewers accepted this as correct behaviour. Documenting intent here so a future reader doesn't mistake it for a missing guard. | No change needed; **document the intent in a code comment** when touching the service in S6/S7. |
 | 5 | **`ENABLE_ADS`, `ADS_CLIENT_ID`, and `KOFI_URL` are not modelled in `env.ts`** — they are read as raw `import.meta.env` strings in the frontend. `env.ts` is the single validated source of truth for backend env only; these are frontend-only and post-MVP. | S11 scope. Adding them to `env.ts` prematurely would expand the backend's env surface for variables it never reads. | **S11** — when implementing the public AdSense surface, add `ENABLE_ADS`/`ADS_CLIENT_ID` to a validated frontend env schema. |
+
+### S2 (Scrapers — Tier A + Takealot — 2026-06-01)
+
+| # | Finding | Why deferred | Revisit at |
+|---|---------|--------------|------------|
+| 1 | **Retailer CSS selectors are not live-verified against production pages.** Each scraper parses structured data first (schema.org `Product` JSON-LD + OpenGraph price meta) with documented CSS fallbacks; every retailer file carries a `NOT YET LIVE-VERIFIED` header + the HANDOVER §4 verification checklist. | No reliable way to capture and confirm live retailer HTML in the build environment; the structured-data-first strategy minimises selector dependence and degrades to a logged `parse_error` rather than crashing. | **Before production polling (end of S2/S3 sign-off, or S4 when the worker goes live):** open each retailer on a real product URL, confirm the JSON-LD/meta path resolves, and fill in the `last-verified` date + fallback selectors. |
+| 2 | **Takealot Puppeteer launch is not exercised end-to-end** — unit tests parse a rendered-shell fixture; the real headless-Chromium fetch (`fetchers.ts`) is coverage-excluded as an I/O boundary. The backend image was built and Chromium 124 confirmed at `/usr/bin/chromium-browser`, but an actual live render was not run. | Launching real Chromium against takealot.com from CI is unreliable (anti-bot, network) and out of scope for the fixture-based S2 gate. | **S4** — when the poll worker runs, verify a real Takealot render extracts a price (or degrades to a logged `blocked`); add an integration smoke test. |
+| 3 | **robots.txt `crawl-delay` is parsed but not enforced** (HANDOVER §14). Evetech advertises a 10s crawl-delay (Tier B). | Per-domain pacing belongs with the scheduler/outbound-throttle work, not the per-URL allow gate. | **S3/S4** — honour `crawl-delay` (cap at `SCRAPE_CRAWL_DELAY_MAX_MS`) in the per-domain delay logic when Evetech/Loot land. |
 
 ---
 

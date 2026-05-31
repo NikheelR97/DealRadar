@@ -242,6 +242,22 @@ match. Blocks deployment.
 
 ---
 
+## S0/S1 Deferred Issues (Santa-Loop Round 2 Findings — 2026-05-31)
+
+The santa-loop dual-review passed on round 2. The following were raised as
+non-blocking suggestions and **explicitly deferred** to named future sprints.
+Revisit them when the corresponding sprint opens.
+
+| # | Finding | Why deferred | Revisit at |
+|---|---------|--------------|------------|
+| 1 | **Frontend nginx runs as root** (image default). HANDOVER §8 only claims a non-root runtime for the app container; nginx master-as-root is standard, but tightening it is good practice. | Not a stated S0/S1 requirement; fixing requires a custom nginx Dockerfile layer. Scope it with the full security hardening pass. | **S9** |
+| 2 | **BIGINT primary keys mapped via `Number()` in `items.service.ts`**. JS numbers are exact up to 2^53 (~9 quadrillion), safe for any realistic row count, but silent precision loss is possible at extreme scale. | Not a current risk; row counts for a self-hosted MVP will never approach 2^53. String serialisation of IDs would require an API change and client updates. | Only if row counts ever exceed ~10^13, or if a BIGINT id is ever passed to a JSON consumer that doesn't handle 64-bit integers (e.g. mobile SDK). No scheduled sprint — log it when relevant. |
+| 3 | **Two defensively-unreachable branches in `me.ts`**: the `!req.user` guard after `requireLogin` (line ~33, cannot fire because `requireLogin` already throws) and the `?? 'invalid url'` fallback (line ~59, all `UrlValidation` reasons are covered). Both count as uncovered branches in the coverage report but are harmless. | Removing them tightens the code but adds zero safety value. The coverage tool sees them as branches; they don't affect the 85/80 gate. | **S9** — tidy during the hardening/refactor pass. |
+| 4 | **`getPublicItemHistory` returns `200 []` (not `404`) when the product has no public tracker**. This is an intentional anonymity choice — the public API never reveals whether a product exists but is private. | Both reviewers accepted this as correct behaviour. Documenting intent here so a future reader doesn't mistake it for a missing guard. | No change needed; **document the intent in a code comment** when touching the service in S6/S7. |
+| 5 | **`ENABLE_ADS`, `ADS_CLIENT_ID`, and `KOFI_URL` are not modelled in `env.ts`** — they are read as raw `import.meta.env` strings in the frontend. `env.ts` is the single validated source of truth for backend env only; these are frontend-only and post-MVP. | S11 scope. Adding them to `env.ts` prematurely would expand the backend's env surface for variables it never reads. | **S11** — when implementing the public AdSense surface, add `ENABLE_ADS`/`ADS_CLIENT_ID` to a validated frontend env schema. |
+
+---
+
 ## Risk Register
 
 | Risk | Likelihood | Impact | Mitigation |

@@ -16,6 +16,9 @@ export default defineConfig({
         'src/index.ts',
         'src/types/**',
         'src/test/**',
+        // I/O boundary adapters (real fetch + headless Chromium) — exercised in
+        // integration/live runs, not unit-testable without a network or browser.
+        'src/scraper/fetchers.ts',
       ],
       thresholds: { lines: 85, functions: 85, branches: 80, statements: 85 },
     },

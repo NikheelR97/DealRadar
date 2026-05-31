@@ -12,7 +12,11 @@ RUN npm run build -w @dealradar/backend
 
 FROM node:20.11-alpine3.19 AS runtime
 ENV NODE_ENV=production
+# Chromium for the Takealot CSR scraper (puppeteer-core; HANDOVER §8 risk register).
+# Pulled from the Alpine 3.19 branch repos, so the pinned base image fixes the major.
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 WORKDIR /app
+RUN apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont
 RUN addgroup -g 1001 dealradar && adduser -u 1001 -G dealradar -S dealradar
 COPY package.json package-lock.json ./
 COPY backend/package.json ./backend/package.json

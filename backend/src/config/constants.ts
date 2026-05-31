@@ -14,6 +14,13 @@ export const SCRAPE_DELAY_MAX_MS = 4_000;
 /** Some retailers (Evetech) advertise a long crawl-delay; honoured per-domain. */
 export const SCRAPE_CRAWL_DELAY_MAX_MS = 12_000;
 export const ROBOTS_TXT_CACHE_TTL_MS = 6 * 60 * 60 * 1_000; // 6 hours
+/** Identifies our crawler honestly in outbound requests (HANDOVER §11). */
+export const SCRAPER_USER_AGENT =
+  'DealRadarBot/1.0 (+https://deal-radar.nikheelr.com; price tracker)';
+/** Chromium path when PUPPETEER_EXECUTABLE_PATH is unset (Alpine image default). */
+export const DEFAULT_CHROMIUM_PATH = '/usr/bin/chromium-browser';
+/** Takealot is CSR; wait for the price node to hydrate before reading HTML. */
+export const PUPPETEER_PRICE_WAIT_MS = 8_000;
 
 // ── URL validation / security ───────────────────────────────────────────────
 export const MAX_URL_LENGTH = 2_048;

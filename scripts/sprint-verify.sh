@@ -5,6 +5,7 @@ npx tsc --noEmit -p backend/tsconfig.json   || { echo "FAIL: Backend TS"; exit 1
 npx tsc --noEmit -p frontend/tsconfig.json  || { echo "FAIL: Frontend TS"; exit 1; }
 npm run lint                                || { echo "FAIL: ESLint"; exit 1; }
 npm run test                                || { echo "FAIL: Tests"; exit 1; }
+npm run test:coverage                       || { echo "FAIL: Coverage"; exit 1; }
 npm run build                               || { echo "FAIL: Build"; exit 1; }
 node scripts/check-no-secrets-in-build.js   || { echo "FAIL: Secret scan"; exit 1; }
 docker compose build                        || { echo "FAIL: Docker build"; exit 1; }

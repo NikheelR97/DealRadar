@@ -22,5 +22,5 @@ COPY --from=build /app/backend/dist ./backend/dist
 USER dealradar
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:3001/api/health || exit 1
+  CMD wget -qO- http://localhost:3001/api/ready || exit 1
 CMD ["node", "backend/dist/index.js"]

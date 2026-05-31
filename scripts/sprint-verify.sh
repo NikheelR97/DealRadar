@@ -13,6 +13,6 @@ docker compose up -d
 sleep 15
 wget -qO- http://localhost:8080            || { echo "FAIL: Frontend health"; docker compose down; exit 1; }
 # Backend port 3001 is not published to the host; it is reachable only via the nginx proxy.
-wget -qO- http://localhost:8080/api/health || { echo "FAIL: Backend health"; docker compose down; exit 1; }
+wget -qO- http://localhost:8080/api/ready || { echo "FAIL: Backend health"; docker compose down; exit 1; }
 docker compose down
 echo "=== ALL GATES PASSED ==="

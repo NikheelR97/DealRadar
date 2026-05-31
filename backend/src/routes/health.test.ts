@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../app.js';
 
-// Health is liveness-first: it returns 200 even when the DB is unreachable,
-// reporting db:false. This test runs without a Postgres instance.
+// Health is liveness-first; readiness is DB-gated. These tests run without Postgres.
 describe('GET /api/health', () => {
   it('returns 200 with a status field', async () => {
     const res = await request(createApp()).get('/api/health');
@@ -22,5 +21,13 @@ describe('GET /api/health', () => {
     const res = await request(createApp()).get('/api/me/items');
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('unauthorized');
+  });
+});
+
+describe('GET /api/ready', () => {
+  it('returns 503 when Postgres is unavailable', async () => {
+    const res = await request(createApp()).get('/api/ready');
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: 'not_ready', db: false });
   });
 });

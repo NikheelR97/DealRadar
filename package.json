@@ -22,6 +22,7 @@
     "build": "npm run build --workspaces --if-present",
     "qa": "npm run type-check && npm run lint && npm run test && npm run build",
     "sprint-verify": "bash scripts/sprint-verify.sh",
+    "sprint-verify:ps": "powershell -ExecutionPolicy Bypass -File scripts/sprint-verify.ps1",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d",
     "docker:logs": "docker compose logs -f",

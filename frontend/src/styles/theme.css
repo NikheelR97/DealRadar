@@ -674,38 +674,142 @@ body::before {
   color: var(--faint);
 }
 
-/* ── Empty state (teaches the next action, not "nothing here") ─────────────── */
-.board-empty {
-  display: flex;
-  flex-direction: column;
+/* ── First-run / empty state (teaches by showing a worked example) ─────────── */
+.onboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.75rem;
   align-items: center;
-  text-align: center;
-  gap: 0.5rem;
   margin-top: 1rem;
-  padding: 3rem 1.5rem;
+  padding: 2.25rem;
   border: 1px dashed var(--border-2);
   border-radius: var(--r-panel);
+}
+
+.onboard__intro .mark {
+  color: var(--faint);
+}
+
+.onboard__title {
+  margin: 0.6rem 0 0;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.onboard__lead {
+  margin: 0.55rem 0 1.15rem;
+  max-width: 42ch;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.onboard__cta {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-control);
+  padding: 0.7rem 1.1rem;
+  font: inherit;
+  font-weight: 700;
+  background: var(--text);
+  color: var(--bg);
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease);
+}
+
+.onboard__cta:hover {
+  background: #ffffff;
+}
+
+.onboard__cta:active {
+  transform: translateY(1px);
+}
+
+.onboard__demo {
+  margin: 0;
+}
+
+.onboard__demo-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.8rem;
   color: var(--muted);
 }
 
-.board-empty .mark {
-  color: var(--faint);
-  margin-bottom: 0.3rem;
-}
-
-.board-empty__title {
-  margin: 0;
-  font-size: 1.05rem;
+.onboard__demo-tag {
+  font-size: 0.64rem;
   font-weight: 700;
-  color: var(--text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.16rem 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  border: 1px solid var(--border-2);
+  color: var(--muted);
 }
 
-.board-empty__hint {
-  margin: 0;
-  max-width: 46ch;
-  font-size: 0.92rem;
-  line-height: 1.55;
+/* Mirrors the live featured panel so the example reads as the real thing, recessed
+   one step (lighter border, "Example" caption) so it can't be mistaken for data. */
+.onboard__deal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 1.2rem 1.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  background: var(--panel);
+}
+
+.onboard__deal-name {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.onboard__deal-baseline {
+  margin: 0.5rem 0 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.onboard__note {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--faint);
   text-wrap: pretty;
+}
+
+.onboard__note b {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .onboard {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+  .onboard__deal {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .onboard__deal .featured__signal {
+    align-items: flex-start;
+  }
 }
 
 /* ── Footer ───────────────────────────────────────────────────────────────── */

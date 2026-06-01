@@ -43,11 +43,13 @@ describe('watchlist state coverage', () => {
 
   it('shows the teaching empty state after every row is removed', () => {
     render(<App />);
-    let removers = screen.queryAllByRole('button', { name: /stop tracking/i });
-    while (removers.length > 0) {
-      fireEvent.click(removers[0]);
-      removers = screen.queryAllByRole('button', { name: /stop tracking/i });
+    let [first] = screen.queryAllByRole('button', { name: /stop tracking/i });
+    while (first) {
+      fireEvent.click(first);
+      [first] = screen.queryAllByRole('button', { name: /stop tracking/i });
     }
-    expect(screen.getByText(/nothing on watch yet/i)).toBeInTheDocument();
+    // The empty state teaches by showing a worked example and a CTA back to the input.
+    expect(screen.getByRole('button', { name: /paste a product url/i })).toBeInTheDocument();
+    expect(screen.getByRole('figure', { name: /example of a tracked deal/i })).toBeInTheDocument();
   });
 });

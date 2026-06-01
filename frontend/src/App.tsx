@@ -333,16 +333,55 @@ function RemoveButton({
   );
 }
 
-function EmptyState(): JSX.Element {
+/**
+ * First-run / cleared state. Teaches by showing: a worked example of a scored deal
+ * (clearly marked "Example") makes the aha moment visible before the user commits a
+ * URL, and the 90-day-median line + fake-markdown note answer the sceptical shopper
+ * head-on. The CTA focuses the real input above rather than duplicating the form.
+ */
+function EmptyState({ onAddFocus }: { onAddFocus: () => void }): JSX.Element {
   return (
-    <div className="board-empty">
-      <RadarMark />
-      <p className="board-empty__title">Nothing on watch yet</p>
-      <p className="board-empty__hint">
-        Paste a product URL from Takealot, Wootware, Evetech, iStore or Loot above. DealRadar checks
-        the price against its 90-day median and tells you when a real drop lands.
-      </p>
-    </div>
+    <section className="onboard" aria-label="Get started">
+      <div className="onboard__intro">
+        <RadarMark />
+        <h3 className="onboard__title">Track your first price</h3>
+        <p className="onboard__lead">
+          Paste a product link from a supported SA retailer (Takealot, Wootware, Evetech, iStore,
+          Loot). DealRadar scores every price against its 90-day median, so you can tell a real
+          discount from a bigger "was".
+        </p>
+        <button type="button" className="onboard__cta" onClick={onAddFocus}>
+          Paste a product URL
+        </button>
+      </div>
+
+      <figure className="onboard__demo" aria-label="Example of a tracked deal">
+        <figcaption className="onboard__demo-cap">
+          <span className="onboard__demo-tag">Example</span>
+          What a tracked deal looks like
+        </figcaption>
+        <div className="onboard__deal">
+          <div className="onboard__deal-lead">
+            <span className="featured__retailer">Wootware</span>
+            <p className="onboard__deal-name">Sony WH-1000XM5 Wireless Headphones</p>
+            <div className="featured__prices">
+              <span className="featured__now">{rand(5499)}</span>
+              <span className="featured__was">{rand(7999)}</span>
+            </div>
+            <p className="onboard__deal-baseline">31% below its 90-day median</p>
+          </div>
+          <div className="featured__signal">
+            <span className="featured__pct">↓ 31%</span>
+            <span className="featured__saved">{`${rand(2500)} off`}</span>
+            <span className="tag tag--exceptional">Exceptional</span>
+          </div>
+        </div>
+        <p className="onboard__note">
+          When a &ldquo;30% off&rdquo; is really flat against the median, DealRadar labels it{' '}
+          <b>No drop</b>, so the fake markdowns do not waste your time.
+        </p>
+      </figure>
+    </section>
   );
 }
 
@@ -377,6 +416,8 @@ export function App(): JSX.Element {
   const [announce, setAnnounce] = useState('');
   // Live clock so relative "checked" labels stay honest without a manual refresh.
   const [nowMs, setNowMs] = useState(() => Date.now());
+
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Track tracked-URL set for duplicate detection (only rows that came from a real add carry a url-id).
   const trackedHrefs = useRef<Set<string>>(new Set());
@@ -490,6 +531,7 @@ export function App(): JSX.Element {
               Product URL to track
             </label>
             <input
+              ref={inputRef}
               id="track-url"
               className="addbar__input"
               type="url"
@@ -536,7 +578,7 @@ export function App(): JSX.Element {
         </div>
 
         {isEmpty ? (
-          <EmptyState />
+          <EmptyState onAddFocus={() => inputRef.current?.focus()} />
         ) : (
           <table className="board">
             <thead>

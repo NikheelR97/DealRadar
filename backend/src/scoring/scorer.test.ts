@@ -116,6 +116,18 @@ describe('calculateDealScore', () => {
     expect(score.blackFridayAlert).toBe(false);
   });
 
+  it('evaluates the Black Friday boundary in SAST, not UTC', () => {
+    // 2026-10-31T22:30:00Z is already 2026-11-01 00:30 in SAST (UTC+2) → in window.
+    const justAfterInSast = new Date('2026-10-31T22:30:00.000Z');
+    const inWindow = calculateDealScore(history(900, 1000, justAfterInSast), justAfterInSast);
+    expect(inWindow.blackFridayAlert).toBe(true);
+
+    // 2026-10-31T21:00:00Z is 2026-10-31 23:00 in SAST → still before the window.
+    const justBeforeInSast = new Date('2026-10-31T21:00:00.000Z');
+    const outOfWindow = calculateDealScore(history(900, 1000, justBeforeInSast), justBeforeInSast);
+    expect(outOfWindow.blackFridayAlert).toBe(false);
+  });
+
   it('does not flag Black Friday for a sub-threshold drop during the window', () => {
     const score = calculateDealScore(history(930, 1000, BF_NOW), BF_NOW); // 7%
     expect(score.tier).toBe('MODEST');
@@ -141,6 +153,21 @@ describe('calculateDealScore', () => {
     expect(score.tier).toBe('NOT_A_DEAL');
     expect(score.baseline).toBeNull();
     expect(score.discountPct).toBeNull();
+    expect(score.note).toBeTruthy();
+  });
+
+  it('returns NOT_A_DEAL with a note when in-stock now but all baseline records are OOS', () => {
+    // Current observation has a price, but every prior in-window record is out of
+    // stock → no valid baseline can be formed.
+    const hist: PriceRecord[] = [
+      rec(900, daysAgo(0)),
+      rec(null, daysAgo(1)),
+      rec(null, daysAgo(2)),
+      rec(null, daysAgo(3)),
+    ];
+    const score = calculateDealScore(hist, NOW);
+    expect(score.tier).toBe('NOT_A_DEAL');
+    expect(score.baseline).toBeNull();
     expect(score.note).toBeTruthy();
   });
 

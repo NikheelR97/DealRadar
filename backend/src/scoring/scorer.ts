@@ -18,6 +18,7 @@ import {
   BLACK_FRIDAY_ALERT_THRESHOLD_PCT,
   BLACK_FRIDAY_START_MONTH,
   BLACK_FRIDAY_START_DAY,
+  SAST_OFFSET_HOURS,
 } from '../config/constants.js';
 import type { DealScore, DealTier, PriceRecord } from '../types/domain.js';
 
@@ -37,10 +38,18 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** True when `now` is on/after 1 November (the Black Friday window opens). */
+/**
+ * True when `now` is on/after 1 November in SAST (the Black Friday window opens).
+ *
+ * Evaluated in SAST (UTC+2), not the server's local zone, so the boundary is
+ * deterministic across deployments: shift the instant by the fixed offset and
+ * read its UTC calendar fields. The 90-day cutoff elsewhere uses UTC epoch math,
+ * which is zone-agnostic and needs no such adjustment.
+ */
 function isInBlackFridayWindow(now: Date): boolean {
-  const month = now.getMonth() + 1; // 1-based to match the constants
-  const day = now.getDate();
+  const sast = new Date(now.getTime() + SAST_OFFSET_HOURS * 60 * 60 * 1000);
+  const month = sast.getUTCMonth() + 1; // 1-based to match the constants
+  const day = sast.getUTCDate();
   return (
     month > BLACK_FRIDAY_START_MONTH ||
     (month === BLACK_FRIDAY_START_MONTH && day >= BLACK_FRIDAY_START_DAY)
@@ -89,6 +98,9 @@ export function calculateDealScore(
   const baselinePrices = history
     .slice(1)
     .filter(
+      // A malformed checkedAt yields NaN, and `NaN >= cutoff` is false, so the
+      // record is intentionally dropped from the baseline rather than throwing.
+      // Our own price_history rows are TIMESTAMPTZ, so this is a defensive guard.
       (r): r is PriceRecord & { price: number } =>
         r.price !== null && r.inStock && new Date(r.checkedAt).getTime() >= cutoff,
     )

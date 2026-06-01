@@ -53,6 +53,13 @@ export const BLACK_FRIDAY_ALERT_THRESHOLD_PCT = 10;
 /** Black Friday window opens 1 November (month is 1-based here for clarity). */
 export const BLACK_FRIDAY_START_MONTH = 11;
 export const BLACK_FRIDAY_START_DAY = 1;
+/**
+ * The Black Friday window is evaluated in South African Standard Time (UTC+2),
+ * since the tracked retailers are ZA-based. SAST has no daylight saving, so a
+ * fixed +2h offset is exact year-round — the window opens at 1 Nov 00:00 SAST
+ * regardless of the server's local time zone.
+ */
+export const SAST_OFFSET_HOURS = 2;
 
 // ── History / pagination caps (Law 3 — no unbounded allocations) ────────────
 export const MAX_HISTORY_RECORDS = 500;

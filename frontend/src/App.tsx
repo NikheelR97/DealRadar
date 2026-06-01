@@ -170,10 +170,12 @@ function newId(): string {
 
 // ── Sections ─────────────────────────────────────────────────────────────────
 
-function RadarMark(): JSX.Element {
-  // Geometric brand mark (concentric radar sweep). The ping ring is reduced-motion safe.
+function RadarMark({ scanning = false }: { scanning?: boolean }): JSX.Element {
+  // Geometric brand mark (concentric radar sweep). The ping ring pulses only while a price
+  // check is actually running, so the one bit of ambient motion marks real activity rather
+  // than looping forever. Reduced-motion safe (the ping is hidden under reduce).
   return (
-    <span className="mark" aria-hidden="true">
+    <span className={`mark${scanning ? ' mark--scanning' : ''}`} aria-hidden="true">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.4" opacity="0.35" />
         <circle cx="12" cy="12" r="5" stroke="currentColor" strokeWidth="1.4" opacity="0.6" />
@@ -541,7 +543,7 @@ export function App(): JSX.Element {
     <>
       <header className="topbar">
         <h1 className="wordmark">
-          <RadarMark />
+          <RadarMark scanning={products.some((p) => p.status === 'loading')} />
           DealRadar
         </h1>
         <span className="topbar__meta">Black Friday price watch</span>

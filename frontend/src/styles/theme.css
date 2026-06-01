@@ -185,7 +185,11 @@ body::before {
   border-radius: var(--r-pill);
   border: 1.4px solid var(--text);
   opacity: 0;
-  animation: ping 3.2s var(--ease) infinite;
+}
+
+/* Ping only while DealRadar is actively checking a price (motion conveys state). */
+.mark--scanning .mark__ping {
+  animation: ping 1.6s var(--ease) infinite;
 }
 
 .topbar__meta {

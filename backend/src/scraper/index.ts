@@ -17,9 +17,34 @@ import { koodoo } from './retailers/koodoo.js';
 import { wootware } from './retailers/wootware.js';
 import { istore } from './retailers/istore.js';
 import { takealot } from './retailers/takealot.js';
+import { evetech } from './retailers/evetech.js';
+import { loot } from './retailers/loot.js';
+import { makro } from './retailers/makro.js';
+import { game } from './retailers/game-stores.js';
+import { incredibleConnection } from './retailers/incredible-connection.js';
+import { hificorp } from './retailers/hificorp.js';
+import { amazon } from './retailers/amazon.js';
 
-/** Single registration site — add a retailer here and to RETAILER_ALLOWLIST (HANDOVER §15.1). */
-const REGISTRY: readonly RetailerScraper[] = [koodoo, wootware, istore, takealot];
+/**
+ * Single registration site — add a retailer here and to RETAILER_ALLOWLIST (HANDOVER §15.1).
+ *   • Tier A (reliable, Cheerio): koodoo, wootware, istore
+ *   • Tier B (reliable, Cheerio):  evetech, loot   • CSR (Puppeteer): takealot
+ *   • Tier C (best-effort, degrade to `blocked`): makro, game, incredibleConnection,
+ *     hificorp, amazon
+ */
+const REGISTRY: readonly RetailerScraper[] = [
+  koodoo,
+  wootware,
+  istore,
+  takealot,
+  evetech,
+  loot,
+  makro,
+  game,
+  incredibleConnection,
+  hificorp,
+  amazon,
+];
 
 const BY_DOMAIN: ReadonlyMap<string, RetailerScraper> = new Map(
   REGISTRY.map((scraper) => [scraper.domain, scraper]),

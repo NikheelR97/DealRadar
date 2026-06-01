@@ -38,7 +38,10 @@ interface TrackedProduct {
   retailer: string;
   /** Last-known price. Present once a check has ever succeeded; absent while a brand-new add is still loading. */
   now?: number;
+  /** Retailer's claimed former price ("was"). Shown struck-through as context, never the basis of the score. */
   was?: number;
+  /** Rolling 90-day median: the baseline the deal is actually scored against (PRODUCT.md). */
+  median?: number;
   inStock: boolean;
   status: RowStatus;
   /** Epoch ms of the last completed check (success or failure). Drives the relative "checked" label. */
@@ -51,12 +54,14 @@ const DAY = 24 * HOUR;
 
 /** Single source of truth for the demo watchlist. Prices in ZAR. */
 const SEED: readonly TrackedProduct[] = [
-  { id: 'sony-xm5', name: 'Sony WH-1000XM5 Wireless Headphones', retailer: 'Wootware', now: 5499, was: 7999, inStock: true, status: 'ready', checkedAt: Date.now() - 8 * MINUTE },
-  { id: 'odyssey-g9', name: 'Samsung 49" Odyssey OLED G9', retailer: 'Evetech', now: 22499, was: 29999, inStock: true, status: 'ready', checkedAt: Date.now() - 14 * MINUTE },
-  { id: 'ipad-air-m2', name: 'Apple iPad Air 11" (M2, 128GB)', retailer: 'iStore', now: 11499, was: 12999, inStock: true, status: 'ready', checkedAt: Date.now() - 31 * MINUTE },
+  { id: 'sony-xm5', name: 'Sony WH-1000XM5 Wireless Headphones', retailer: 'Wootware', now: 5499, was: 7999, median: 7999, inStock: true, status: 'ready', checkedAt: Date.now() - 8 * MINUTE },
+  // Retailer's "was" (R29 999) is inflated above the real 90-day median (R25 999): the screaming
+  // "25% off" is only ~13% against the baseline, so it scores Modest. This is the fake-catch.
+  { id: 'odyssey-g9', name: 'Samsung 49" Odyssey OLED G9', retailer: 'Evetech', now: 22499, was: 29999, median: 25999, inStock: true, status: 'ready', checkedAt: Date.now() - 14 * MINUTE },
+  { id: 'ipad-air-m2', name: 'Apple iPad Air 11" (M2, 128GB)', retailer: 'iStore', now: 11499, was: 12999, median: 12499, inStock: true, status: 'ready', checkedAt: Date.now() - 31 * MINUTE },
   // A check that could not reach the retailer: last-known price stays, but we don't vouch for it.
-  { id: 'lg-c4-48', name: 'LG OLED48C4 48" evo Smart TV', retailer: 'Takealot', now: 17999, was: 21999, inStock: true, status: 'failed', checkedAt: Date.now() - 2 * DAY },
-  { id: 'mx-master-3s', name: 'Logitech MX Master 3S', retailer: 'Evetech', now: 1749, was: 1749, inStock: false, status: 'ready', checkedAt: Date.now() - 19 * MINUTE },
+  { id: 'lg-c4-48', name: 'LG OLED48C4 48" evo Smart TV', retailer: 'Takealot', now: 17999, was: 21999, median: 20999, inStock: true, status: 'failed', checkedAt: Date.now() - 2 * DAY },
+  { id: 'mx-master-3s', name: 'Logitech MX Master 3S', retailer: 'Evetech', now: 1749, was: 1749, median: 1799, inStock: false, status: 'ready', checkedAt: Date.now() - 19 * MINUTE },
 ];
 
 // ── Derived display helpers ──────────────────────────────────────────────────
@@ -98,9 +103,11 @@ interface DealView {
 function view(product: TrackedProduct): DealView {
   if (!product.inStock) return { product, pct: 0, saved: 0, tier: 'dead' };
   const now = product.now ?? 0;
-  const was = product.was ?? now;
-  const saved = Math.max(0, was - now);
-  const pct = was > 0 ? Math.round((saved / was) * 100) : 0;
+  // The drop is measured against the 90-day median (the price the product normally sits at),
+  // never the retailer's "was". That is what makes the percentage evidence rather than marketing.
+  const baseline = product.median ?? product.was ?? now;
+  const saved = Math.max(0, baseline - now);
+  const pct = baseline > 0 ? Math.round((saved / baseline) * 100) : 0;
   const tier: Tier =
     pct >= DEAL_THRESHOLD_EXCEPTIONAL_PCT ? 'exceptional'
     : pct >= DEAL_THRESHOLD_GOOD_PCT ? 'good'
@@ -141,16 +148,19 @@ function nameFromUrl(url: URL): string {
   return titled.length > 64 ? `${titled.slice(0, 61)}...` : titled;
 }
 
-/** A believable fresh quote with a realistic spread of drop tiers. */
-function freshQuote(): { now: number; was: number } {
-  const was = (5 + Math.floor(Math.random() * 246)) * 100; // R500..R25500
+/** A believable fresh quote with a realistic spread of drop tiers, scored against a median. */
+function freshQuote(): { now: number; was: number; median: number } {
+  const median = (5 + Math.floor(Math.random() * 246)) * 100; // normal price, R500..R25500
   const r = Math.random();
   const pct =
     r < 0.45 ? Math.floor(Math.random() * 5) // flat 0-4
     : r < 0.75 ? 5 + Math.floor(Math.random() * 10) // 5-14
     : r < 0.92 ? 15 + Math.floor(Math.random() * 15) // 15-29
     : 30 + Math.floor(Math.random() * 20); // 30-49
-  return { now: Math.round(was * (1 - pct / 100)), was };
+  const now = Math.round(median * (1 - pct / 100));
+  // Retailer's "was" sits a little above the median, the way inflated markdowns usually do.
+  const was = Math.round(median * (1.05 + Math.random() * 0.2));
+  return { now, was, median };
 }
 
 function newId(): string {
@@ -194,10 +204,11 @@ function FeaturedDeal({ deal }: { deal: DealView }): JSX.Element {
           <span className="featured__now">{rand(product.now ?? 0)}</span>
           {product.was ? <span className="featured__was">{rand(product.was)}</span> : null}
         </div>
+        <p className="featured__baseline">{`${pct}% below the 90-day median`}</p>
       </div>
       <div className="featured__signal">
         <span className="featured__pct">{`↓ ${pct}%`}</span>
-        <span className="featured__saved">{`${rand(saved)} off`}</span>
+        <span className="featured__saved">{`${rand(saved)} below median`}</span>
         <span className={`tag tag--${deal.tier}`}>{TIER_LABEL[deal.tier]}</span>
       </div>
     </section>
@@ -274,7 +285,15 @@ function FailedRow({
   );
 }
 
-function ReadyRow({ deal, onRemove }: { deal: DealView; onRemove: (id: string) => void }): JSX.Element {
+function ReadyRow({
+  deal,
+  nowMs,
+  onRemove,
+}: {
+  deal: DealView;
+  nowMs: number;
+  onRemove: (id: string) => void;
+}): JSX.Element {
   const { product, pct, saved, tier } = deal;
   const live = tier !== 'dead';
   return (
@@ -293,16 +312,19 @@ function ReadyRow({ deal, onRemove }: { deal: DealView; onRemove: (id: string) =
         {live && pct > 0 ? (
           <>
             <span className="delta">{`↓ ${pct}%`}</span>
-            <span className="delta-saved">{`${rand(saved)} off`}</span>
+            <span className="delta-saved">{`${rand(saved)} below median`}</span>
           </>
         ) : (
           <span className="delta delta--none">{live ? 'No drop' : '—'}</span>
         )}
       </td>
       <td data-label="Status">
-        <div className="cell-actions">
-          <span className={`tag tag--${tier}`}>{TIER_LABEL[tier]}</span>
-          <RemoveButton id={product.id} name={product.name} onRemove={onRemove} />
+        <div className="cell-status">
+          <div className="cell-actions">
+            <span className={`tag tag--${tier}`}>{TIER_LABEL[tier]}</span>
+            <RemoveButton id={product.id} name={product.name} onRemove={onRemove} />
+          </div>
+          {product.checkedAt ? <span className="cell-meta">checked {ago(product.checkedAt, nowMs)}</span> : null}
         </div>
       </td>
     </tr>
@@ -452,8 +474,8 @@ export function App(): JSX.Element {
       const v = view({ id, name: label, retailer: '', inStock: true, status: 'ready', ...quote });
       setAnnounce(
         v.pct > 0
-          ? `${label} priced at ${rand(quote.now)}, down ${v.pct}%. Marked ${TIER_LABEL[v.tier]}.`
-          : `${label} priced at ${rand(quote.now)}. No drop against the baseline.`,
+          ? `${label} priced at ${rand(quote.now)}, ${v.pct}% below its 90-day median. Marked ${TIER_LABEL[v.tier]}.`
+          : `${label} priced at ${rand(quote.now)}. No drop against its 90-day median.`,
       );
     }, 1400);
     timers.current.add(t);
@@ -509,6 +531,11 @@ export function App(): JSX.Element {
     ? Math.round(dropped.reduce((sum, d) => sum + d.pct, 0) / dropped.length)
     : 0;
   const isEmpty = products.length === 0;
+  // Most recent completed check across the watchlist, for the global freshness line.
+  const lastChecked = products.reduce<number | null>(
+    (latest, p) => (p.checkedAt && (latest === null || p.checkedAt > latest) ? p.checkedAt : latest),
+    null,
+  );
 
   return (
     <>
@@ -577,6 +604,13 @@ export function App(): JSX.Element {
           </span>
         </div>
 
+        {!isEmpty ? (
+          <p className="board-sync">
+            {lastChecked ? `Prices last checked ${ago(lastChecked, nowMs)}` : 'Checking prices'}, scored
+            against each product&rsquo;s 90-day median, not the retailer&rsquo;s &ldquo;was&rdquo;.
+          </p>
+        ) : null}
+
         {isEmpty ? (
           <EmptyState onAddFocus={() => inputRef.current?.focus()} />
         ) : (
@@ -609,7 +643,9 @@ export function App(): JSX.Element {
                     />
                   );
                 }
-                return <ReadyRow key={product.id} deal={view(product)} onRemove={handleRemove} />;
+                return (
+                  <ReadyRow key={product.id} deal={view(product)} nowMs={nowMs} onRemove={handleRemove} />
+                );
               })}
             </tbody>
           </table>

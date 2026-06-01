@@ -372,6 +372,14 @@ body::before {
   font-variant-numeric: tabular-nums;
 }
 
+.featured__baseline {
+  margin: 0.5rem 0 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .featured__now {
   font-size: 1.15rem;
   font-weight: 700;
@@ -434,6 +442,16 @@ body::before {
 .board-head__stat b {
   color: var(--accent);
   font-weight: 700;
+}
+
+/* Global freshness + baseline statement: the one place "90-day median" is spelled out,
+   so the per-row figures can stay compact ("below median") without repeating it. */
+.board-sync {
+  margin: 0.1rem 0 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--faint);
+  text-wrap: pretty;
 }
 
 /* ── Board (dense table) ──────────────────────────────────────────────────── */
@@ -582,7 +600,13 @@ body::before {
 }
 
 /* ── Row states (loading / failed) + row actions ──────────────────────────── */
-/* Status cell groups the tier chip with the per-row remove control. */
+/* Status cell stacks the action row (tier chip + remove) above the freshness meta. */
+.cell-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
 .cell-actions {
   display: flex;
   align-items: center;

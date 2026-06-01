@@ -6,11 +6,13 @@
  * and longest-match-wins (the standard resolution). Crawl-delay is parsed for
  * reference but not enforced here (HANDOVER §14 — we do not pace on crawl-delay yet).
  */
-import { ROBOTS_TXT_CACHE_TTL_MS } from '../config/constants.js';
+import { ROBOTS_TXT_CACHE_TTL_MS, SCRAPE_CRAWL_DELAY_MAX_MS } from '../config/constants.js';
 
 interface RobotsRules {
   disallow: string[];
   allow: string[];
+  /** Advertised Crawl-delay in milliseconds, capped; 0 when unset/invalid. */
+  crawlDelayMs: number;
 }
 
 interface CacheEntry {
@@ -35,7 +37,7 @@ function stripComment(line: string): string {
 
 /** Parse the `User-agent: *` group into prefix Disallow/Allow rules. */
 export function parseRobots(body: string): RobotsRules {
-  const rules: RobotsRules = { disallow: [], allow: [] };
+  const rules: RobotsRules = { disallow: [], allow: [], crawlDelayMs: 0 };
   let inAgentSection = false;
   let applies = false;
   for (const rawLine of body.split(/\r?\n/)) {
@@ -55,8 +57,16 @@ export function parseRobots(body: string): RobotsRules {
     if (!applies || value.length === 0) continue;
     if (key === 'disallow') rules.disallow.push(value);
     else if (key === 'allow') rules.allow.push(value);
+    else if (key === 'crawl-delay') rules.crawlDelayMs = parseCrawlDelayMs(value);
   }
   return rules;
+}
+
+/** Parse a `Crawl-delay` value (seconds) into capped milliseconds; 0 when invalid. */
+function parseCrawlDelayMs(value: string): number {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0) return 0;
+  return Math.min(Math.round(seconds * 1_000), SCRAPE_CRAWL_DELAY_MAX_MS);
 }
 
 /** Longest matching prefix rule in `rules`, or null when none matches `path`. */
@@ -70,7 +80,10 @@ function longestMatch(path: string, patterns: readonly string[]): string | null 
 }
 
 /** Resolve allow/disallow for a path using longest-match-wins. */
-export function isPathAllowedByRules(path: string, rules: RobotsRules): boolean {
+export function isPathAllowedByRules(
+  path: string,
+  rules: Pick<RobotsRules, 'disallow' | 'allow'>,
+): boolean {
   const disallowed = longestMatch(path, rules.disallow);
   if (disallowed === null) return true;
   const allowed = longestMatch(path, rules.allow);
@@ -101,4 +114,21 @@ export async function isUrlAllowed(url: string, fetcher: RobotsFetcher): Promise
   const rules = await loadRules(parsed.hostname, parsed.origin, fetcher);
   const path = parsed.pathname + parsed.search;
   return isPathAllowedByRules(path, rules);
+}
+
+/**
+ * Capped per-domain `Crawl-delay` (ms) advertised in robots.txt, or 0 when none.
+ * Shares the same TTL cache as `isUrlAllowed`, so reading the pacing hint costs no
+ * extra fetch. A malformed URL yields 0 (no enforced delay). Consumed by the poll
+ * worker to space repeated requests to the same retailer (HANDOVER §14).
+ */
+export async function getCrawlDelayMs(url: string, fetcher: RobotsFetcher): Promise<number> {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return 0;
+  }
+  const rules = await loadRules(parsed.hostname, parsed.origin, fetcher);
+  return rules.crawlDelayMs;
 }

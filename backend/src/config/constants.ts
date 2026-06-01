@@ -67,6 +67,12 @@ export const DEFAULT_POLL_INTERVAL_HOURS = 4;
 export const MAX_PRODUCTS_PER_POLL_BATCH = 50;
 /** node-cron expression for the scheduler tick (every 15 minutes). */
 export const SCHEDULER_CRON = '*/15 * * * *';
+/**
+ * Postgres advisory-lock key guarding the poll tick. Only one tick across all
+ * backend instances may hold it; a crashed holder's session-level lock is released
+ * automatically by Postgres, so no stale-lock cleanup is needed (HANDOVER §6 — no Redis).
+ */
+export const SCHEDULER_ADVISORY_LOCK_KEY = 4_021_973;
 
 // ── Per-user limits ─────────────────────────────────────────────────────────
 export const MAX_TRACKED_PRODUCTS = 100;

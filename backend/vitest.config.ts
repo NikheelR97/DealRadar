@@ -19,6 +19,9 @@ export default defineConfig({
         // I/O boundary adapters (real fetch + headless Chromium) — exercised in
         // integration/live runs, not unit-testable without a network or browser.
         'src/scraper/fetchers.ts',
+        // Scheduler composition root: wires real scraper/robots/lock/timers. Same
+        // untestable-edge rationale as fetchers.ts; the pure tick logic is tested.
+        'src/scheduler/live.ts',
       ],
       thresholds: { lines: 85, functions: 85, branches: 80, statements: 85 },
     },

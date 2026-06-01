@@ -3,8 +3,10 @@ import {
   parseRobots,
   isPathAllowedByRules,
   isUrlAllowed,
+  getCrawlDelayMs,
   clearRobotsCache,
 } from './robots.js';
+import { SCRAPE_CRAWL_DELAY_MAX_MS } from '../config/constants.js';
 
 describe('parseRobots', () => {
   it('collects Disallow paths for the * group only', () => {
@@ -31,6 +33,53 @@ describe('parseRobots', () => {
   it('treats an empty Disallow as allow-all (no rule recorded)', () => {
     const rules = parseRobots('User-agent: *\nDisallow:');
     expect(rules.disallow).toEqual([]);
+  });
+
+  it('parses Crawl-delay (seconds) into capped milliseconds for the * group', () => {
+    const rules = parseRobots('User-agent: *\nCrawl-delay: 10');
+    expect(rules.crawlDelayMs).toBe(10_000);
+  });
+
+  it('caps an excessive Crawl-delay at SCRAPE_CRAWL_DELAY_MAX_MS', () => {
+    const rules = parseRobots('User-agent: *\nCrawl-delay: 600');
+    expect(rules.crawlDelayMs).toBe(SCRAPE_CRAWL_DELAY_MAX_MS);
+  });
+
+  it('ignores a non-numeric or non-positive Crawl-delay (0 = no delay)', () => {
+    expect(parseRobots('User-agent: *\nCrawl-delay: soon').crawlDelayMs).toBe(0);
+    expect(parseRobots('User-agent: *\nCrawl-delay: 0').crawlDelayMs).toBe(0);
+    expect(parseRobots('User-agent: *\nDisallow: /x').crawlDelayMs).toBe(0);
+  });
+
+  it('does not record Crawl-delay from a non-matching UA group', () => {
+    const rules = parseRobots('User-agent: Googlebot\nCrawl-delay: 10');
+    expect(rules.crawlDelayMs).toBe(0);
+  });
+});
+
+describe('getCrawlDelayMs', () => {
+  beforeEach(() => clearRobotsCache());
+
+  it('returns the capped advertised delay, served from the shared cache', async () => {
+    let calls = 0;
+    const fetcher = async (): Promise<string> => {
+      calls++;
+      return 'User-agent: *\nCrawl-delay: 10';
+    };
+    expect(await getCrawlDelayMs('https://eve.example/p1', fetcher)).toBe(10_000);
+    // Second lookup on the same host is served from cache (no extra fetch).
+    expect(await getCrawlDelayMs('https://eve.example/p2', fetcher)).toBe(10_000);
+    expect(calls).toBe(1);
+  });
+
+  it('returns 0 when robots.txt advertises no Crawl-delay', async () => {
+    const fetcher = async (): Promise<string> => 'User-agent: *\nDisallow: /x';
+    expect(await getCrawlDelayMs('https://shop.example/p', fetcher)).toBe(0);
+  });
+
+  it('returns 0 for a malformed URL', async () => {
+    const fetcher = async (): Promise<string> => 'User-agent: *\nCrawl-delay: 10';
+    expect(await getCrawlDelayMs('not a url', fetcher)).toBe(0);
   });
 });
 

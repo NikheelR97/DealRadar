@@ -293,6 +293,32 @@ Revisit them when the corresponding sprint opens.
 
 ---
 
+### S4 (Scheduler + poll worker — 2026-06-01)
+
+**Resolved this sprint (deferrals closed):**
+
+- **S2 #3 / S3 robots `Crawl-delay` enforcement** — CLOSED. `robots.ts` now parses
+  `Crawl-delay` into capped milliseconds (`getCrawlDelayMs`, capped at
+  `SCRAPE_CRAWL_DELAY_MAX_MS` = 12s) sharing the existing TTL cache, and
+  `poll.worker.ts` paces repeated hits on the same retailer by
+  `max(jitter, crawl-delay)`. Evetech (10s advertised) is the first consumer.
+- **S3 #3 (partial) Tier C retry volume per interval** — the per-*tick* hammering
+  concern is CLOSED: the worker advances `products.last_checked_at` even on a logged
+  error, so a permanently-blocked product backs off to its normal `poll_interval_hours`
+  instead of being retried every 15-minute tick. The bounded 3× immediate retry within
+  a *single* scrape against a deterministic challenge page remains as documented in S3
+  #3 (acceptable, bounded) — not re-opened.
+
+**New / carried deferrals:**
+
+| # | Finding | Why deferred | Revisit at |
+|---|---------|--------------|------------|
+| 1 | **Takealot's real Puppeteer render is still not exercised end-to-end** (carried from S2 #2). The scheduler now drives the `puppeteer` source in production, but launching real headless Chromium against takealot.com from CI/this build env is unreliable (anti-bot, network) and was not run; unit tests still parse a rendered-shell fixture. | Live Chromium against a CSR retailer can't run deterministically in CI; it needs a real network egress and a live page. | **S10 (deployment) / first production run** — confirm a live Takealot render extracts a price (or degrades to a logged `blocked`) once the worker polls from the deployed host; add an integration smoke test there. |
+| 2 | **The scheduler, advisory lock, and poll worker are unit-tested against a mocked DB, not a real Postgres.** `withSchedulerLock` (pg_try_advisory_lock), the due-products `make_interval` query, and the `price_history`/`scrape_errors` inserts are verified by mocking `db/pool`; no test runs them against a live database. | A real-Postgres integration harness is the S9 QA-gate's scope; the S4 gate is fixture/mock-based like S2/S3. The SQL is parameterised and the lock is session-scoped (auto-released on crash). | **S9** — add an integration test (real test DB) that proves: a due product is selected and polled, two concurrent ticks don't overlap (advisory lock), and `last_checked_at` advances on both success and error. |
+| 3 | **Per-domain pacing over-waits: it sleeps the full `max(jitter, crawl-delay)` between same-domain hits without subtracting time already spent scraping other products.** | Deliberate politeness bias and a deterministic, wall-clock-free design (keeps the worker unit-testable without faking `Date.now`). Over-waiting is safe; batches are bounded at `MAX_PRODUCTS_PER_POLL_BATCH` (50). | Only if poll throughput ever becomes a bottleneck (e.g. a single domain dominates a batch and the 12s cap stretches a tick past the 15-min cadence). No scheduled sprint — log when relevant. |
+
+---
+
 ## Risk Register
 
 | Risk | Likelihood | Impact | Mitigation |

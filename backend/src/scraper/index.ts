@@ -6,11 +6,8 @@
  * An unknown host can never reach here in production (URL validation rejects it first),
  * but we still fail closed with a typed error.
  */
-import {
-  MAX_SCRAPE_RETRIES,
-  SCRAPE_DELAY_MAX_MS,
-  SCRAPE_DELAY_MIN_MS,
-} from '../config/constants.js';
+import { MAX_SCRAPE_RETRIES } from '../config/constants.js';
+import { jitterMs } from './jitter.js';
 import { liveDeps } from './fetchers.js';
 import { ScraperError, type RetailerScraper, type ScrapeDeps, type ScrapeResult } from './types.js';
 import { koodoo } from './retailers/koodoo.js';
@@ -52,12 +49,6 @@ const BY_DOMAIN: ReadonlyMap<string, RetailerScraper> = new Map(
 
 export function getScraperForHost(host: string): RetailerScraper | undefined {
   return BY_DOMAIN.get(host.toLowerCase());
-}
-
-/** Random delay within the configured jitter band (HANDOVER §11 outbound throttle). */
-function jitterMs(): number {
-  const span = SCRAPE_DELAY_MAX_MS - SCRAPE_DELAY_MIN_MS;
-  return SCRAPE_DELAY_MIN_MS + Math.floor(Math.random() * (span + 1));
 }
 
 /**

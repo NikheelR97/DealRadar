@@ -198,10 +198,11 @@ function Metric({ label, value, accent }: { label: string; value: string; accent
 function FeaturedDeal({ deal }: { deal: DealView }): JSX.Element {
   const { product, pct, saved } = deal;
   return (
-    <section className="featured" aria-label="Top drop right now">
+    <section className="featured">
+      <h2 className="visually-hidden">Top drop right now</h2>
       <div className="featured__lead">
         <span className="featured__retailer">{product.retailer}</span>
-        <h3 className="featured__name">{product.name}</h3>
+        <p className="featured__name">{product.name}</p>
         <div className="featured__prices">
           <span className="featured__now">{rand(product.now ?? 0)}</span>
           {product.was ? <span className="featured__was">{rand(product.was)}</span> : null}

@@ -45,7 +45,7 @@ describe('scrapeProduct', () => {
   });
 
   it('throws ScraperError(unknown) for an unregistered host', async () => {
-    await expect(scrapeProduct('https://www.amazon.co.za/dp/X', deps())).rejects.toMatchObject({
+    await expect(scrapeProduct('https://shop.unregistered.example/dp/X', deps())).rejects.toMatchObject({
       type: 'unknown',
     });
   });
@@ -86,6 +86,18 @@ describe('scrapeProduct', () => {
       type: 'unknown',
     });
     expect(fetchHtml).toHaveBeenCalledOnce();
+  });
+
+  it('degrades a Tier C challenge page to ScraperError(blocked) through the registry', async () => {
+    // A registered Tier C retailer (Makro) served a 200 anti-bot shell must NOT crash or
+    // be mislabelled parse_error — it degrades to a logged `blocked` (S3 gate).
+    const challenge =
+      '<html><head><title>Just a moment...</title></head>' +
+      '<body><div id="cf-browser-verification">Checking your browser</div></body></html>';
+    const fetchHtml = vi.fn(async () => challenge);
+    await expect(
+      scrapeProduct('https://www.makro.co.za/p/12345', deps({ fetchHtml, delay: async () => undefined })),
+    ).rejects.toMatchObject({ type: 'blocked' });
   });
 
   it('succeeds on a later attempt after a transient failure', async () => {

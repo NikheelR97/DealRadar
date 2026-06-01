@@ -79,6 +79,12 @@
   --accent-soft: rgba(200, 255, 0, 0.12);
   --accent-line: rgba(200, 255, 0, 0.4);
 
+  /* The only non-lime semantic colour: a calm, desaturated red for input-validation
+     errors the user must fix. ~5.6:1 on --bg (WCAG AA). Never used for deal signal. */
+  --danger: #f2a39a;
+  --danger-soft: rgba(242, 163, 154, 0.1);
+  --danger-line: rgba(242, 163, 154, 0.45);
+
   --r-panel: 14px;
   --r-control: 10px;
   --r-pill: 999px;
@@ -264,6 +270,25 @@ body::before {
 
 .addbar__btn:active {
   transform: translateY(1px);
+}
+
+.addbar__error {
+  flex-basis: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.addbar__error::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--danger);
 }
 
 /* ── Metric strip ─────────────────────────────────────────────────────────── */
@@ -551,6 +576,138 @@ body::before {
   border-color: var(--border-2);
 }
 
+.tag--checking {
+  color: var(--faint);
+  border-color: var(--border-2);
+}
+
+/* ── Row states (loading / failed) + row actions ──────────────────────────── */
+/* Status cell groups the tier chip with the per-row remove control. */
+.cell-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.row-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--faint);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  transition: color 0.14s var(--ease), background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.row-remove:hover {
+  color: var(--text);
+  background: var(--panel-2);
+  border-color: var(--border-2);
+}
+
+.row-retry {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  padding: 0.22rem 0.7rem;
+  white-space: nowrap;
+  transition: background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.row-retry:hover {
+  background: var(--panel-2);
+  border-color: var(--text);
+}
+
+/* Last-known price on a failed check: kept visible but visibly unverified. */
+.cell-now--stale {
+  color: var(--muted);
+}
+
+.cell-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+/* Skeleton bars for a price check in flight. Right-aligned to match .num cells. */
+.skel {
+  display: inline-block;
+  height: 0.95rem;
+  border-radius: 5px;
+  background: linear-gradient(
+    100deg,
+    var(--panel-2) 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    var(--panel-2) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.25s linear infinite;
+}
+
+.skel--price {
+  width: 4.5rem;
+}
+
+.skel--drop {
+  width: 3rem;
+}
+
+.row-status {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+/* ── Empty state (teaches the next action, not "nothing here") ─────────────── */
+.board-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 3rem 1.5rem;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r-panel);
+  color: var(--muted);
+}
+
+.board-empty .mark {
+  color: var(--faint);
+  margin-bottom: 0.3rem;
+}
+
+.board-empty__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.board-empty__hint {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
 /* ── Footer ───────────────────────────────────────────────────────────────── */
 .foot {
   margin-top: 2.5rem;
@@ -572,6 +729,15 @@ body::before {
 }
 
 /* ── Motion keyframes ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
 @keyframes ping {
   0% {
     opacity: 0.55;

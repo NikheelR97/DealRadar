@@ -1,135 +1,155 @@
 import { KOFI_URL } from './lib/constants';
 
 /**
- * App shell + claymorphism demo. The real surfaces (tracked-items page, add form,
- * history modal) land in S6/S7; this renders sample ProductCard / DealBadge /
- * AddProductForm / SkeletonCard primitives so the clay design language is locked in
- * before those components are built. All styling lives in `styles/clay.css` (pure
- * CSS, CSP-safe). The heading and Ko-fi footer behaviour are unchanged.
+ * App shell - "Deal board" watchlist (SKILL-driven redesign). A dense, scannable
+ * table surface for deal-hunters who re-scan many items daily; the emerald Drop
+ * column is the one signal the watchlist exists to show. Styling lives in
+ * `styles/theme.css` (self-hosted fonts, CSP-safe). Heading text and Ko-fi footer
+ * behaviour unchanged. No em-dashes in any visible string (SKILL 9.G).
  */
 
-type DealTier = 'exceptional' | 'good' | 'modest' | 'none' | 'oos';
+type Status = 'live' | 'dead';
 
-interface DemoProduct {
+interface TrackedProduct {
   name: string;
   retailer: string;
-  price: string;
+  now: string;
   was?: string;
-  tier: DealTier;
-  badge: string;
-  thumb: string;
+  delta: string; // emerald Drop column - the focal signal
+  status: Status;
+  statusLabel: string;
 }
 
-const DEMO_PRODUCTS: readonly DemoProduct[] = [
+const WATCHLIST: readonly TrackedProduct[] = [
   {
     name: 'Sony WH-1000XM5 Wireless Headphones',
-    retailer: 'wootware.co.za',
-    price: 'R5 499',
+    retailer: 'Wootware',
+    now: 'R5 499',
     was: 'R7 999',
-    tier: 'exceptional',
-    badge: '↓ 31% · Exceptional',
-    thumb: '🎧',
+    delta: '↓ 31%',
+    status: 'live',
+    statusLabel: 'Exceptional',
   },
   {
     name: 'Apple iPad Air 11" (M2, 128GB)',
-    retailer: 'istore.co.za',
-    price: 'R12 999',
+    retailer: 'iStore',
+    now: 'R12 999',
     was: 'R14 999',
-    tier: 'good',
-    badge: '↓ 13% · Good deal',
-    thumb: '📱',
+    delta: '↓ 13%',
+    status: 'live',
+    statusLabel: 'Good deal',
+  },
+  {
+    name: 'Samsung 49" Odyssey OLED G9',
+    retailer: 'Evetech',
+    now: 'R28 499',
+    was: 'R29 999',
+    delta: '↓ 5%',
+    status: 'live',
+    statusLabel: 'Modest',
   },
   {
     name: 'Logitech MX Master 3S',
-    retailer: 'evetech.co.za',
-    price: 'R1 749',
-    tier: 'oos',
-    badge: 'Out of stock',
-    thumb: '🖱️',
+    retailer: 'Evetech',
+    now: 'R1 749',
+    delta: 'OOS',
+    status: 'dead',
+    statusLabel: 'Out of stock',
   },
 ];
 
-function DealBadge({ tier, label }: { tier: DealTier; label: string }): JSX.Element {
-  return <span className={`clay-badge clay-badge--${tier}`}>{label}</span>;
-}
-
-function ProductCard({ product }: { product: DemoProduct }): JSX.Element {
+function BoardRow({ product, index }: { product: TrackedProduct; index: number }): JSX.Element {
+  const live = product.status === 'live';
   return (
-    <article className="clay-card clay-card--interactive">
-      <div className="clay-thumb" aria-hidden="true">
-        {product.thumb}
-      </div>
-      <h3 className="clay-product-name">{product.name}</h3>
-      <p className="clay-retailer">{product.retailer}</p>
-      <div className="clay-price-row">
-        <span className="clay-price">{product.price}</span>
-        {product.was ? <span className="clay-price-was">{product.was}</span> : null}
-      </div>
-      <DealBadge tier={product.tier} label={product.badge} />
-    </article>
-  );
-}
-
-function SkeletonCard(): JSX.Element {
-  return (
-    <article className="clay-card" aria-hidden="true">
-      <div className="clay-thumb clay-skeleton" style={{ marginBottom: '1rem' }} />
-      <div className="clay-skeleton" style={{ height: '1rem', width: '85%', marginBottom: '0.6rem' }} />
-      <div className="clay-skeleton" style={{ height: '1rem', width: '55%', marginBottom: '1.1rem' }} />
-      <div className="clay-skeleton" style={{ height: '1.6rem', width: '40%' }} />
-    </article>
+    <tr style={{ '--i': index } as React.CSSProperties}>
+      <td data-label="Product">
+        <div className="cell-name">{product.name}</div>
+        <div className="cell-retailer">{product.retailer}</div>
+      </td>
+      <td className="num" data-label="Price">
+        <span className="cell-now">{product.now}</span>
+        {product.was ? <span className="cell-was">{product.was}</span> : null}
+      </td>
+      <td className="num" data-label="Drop">
+        <span className={`delta${live ? '' : ' delta--none'}`}>{product.delta}</span>
+      </td>
+      <td data-label="Status">
+        <span className={`tag ${live ? 'tag--live' : 'tag--dead'}`}>{product.statusLabel}</span>
+      </td>
+    </tr>
   );
 }
 
 export function App(): JSX.Element {
+  const dropped = WATCHLIST.filter((p) => p.status === 'live').length;
   return (
-    <main className="clay-app">
-      <header className="clay-hero">
-        <h1>DealRadar</h1>
-        <p>
-          Black Friday price tracking for South African retailers. Below is a preview of the
-          claymorphism design language the tracked-items UI will use.
+    <>
+      <header className="topbar">
+        <h1 className="wordmark">DealRadar</h1>
+        <span className="topbar__meta">Black Friday price watch</span>
+      </header>
+
+      <main className="page">
+        <p className="intro">
+          Track South African retailer prices and catch the drop the moment it lands.
         </p>
         <form
-          className="clay-field"
+          className="addbar"
           onSubmit={(e) => {
             e.preventDefault();
           }}
         >
+          <label className="visually-hidden" htmlFor="track-url">
+            Product URL to track
+          </label>
           <input
-            className="clay-input"
+            id="track-url"
+            className="addbar__input"
             type="url"
             placeholder="Paste a product URL to track…"
-            aria-label="Product URL to track"
           />
-          <button className="clay-button" type="submit">
+          <button className="addbar__btn" type="submit">
             Track price
           </button>
         </form>
-      </header>
 
-      <h2 className="clay-section-title">Tracked items</h2>
-      <section className="clay-grid">
-        {DEMO_PRODUCTS.map((product) => (
-          <ProductCard key={product.name} product={product} />
-        ))}
-      </section>
+        <div className="board-head">
+          <h2>Watchlist</h2>
+          <span className="board-head__stat">
+            <b>{WATCHLIST.length}</b> tracked / <b>{dropped}</b> dropped
+          </span>
+        </div>
 
-      <h2 className="clay-section-title">Loading state</h2>
-      <section className="clay-grid">
-        <SkeletonCard />
-        <SkeletonCard />
-      </section>
+        <table className="board">
+          <thead>
+            <tr>
+              <th scope="col">Product</th>
+              <th scope="col" className="num">
+                Price
+              </th>
+              <th scope="col" className="num">
+                Drop
+              </th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {WATCHLIST.map((product, i) => (
+              <BoardRow key={product.name} product={product} index={i} />
+            ))}
+          </tbody>
+        </table>
 
-      <Footer />
-    </main>
+        <Footer />
+      </main>
+    </>
   );
 }
 
 function Footer(): JSX.Element | null {
   if (!KOFI_URL) return null;
   return (
-    <footer className="clay-footer">
+    <footer className="foot">
       <a href={KOFI_URL} target="_blank" rel="noopener noreferrer">
         Support on Ko-fi ☕
       </a>

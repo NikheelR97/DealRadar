@@ -1,0 +1,391 @@
+/**
+ * DealRadar - "Deal board" watchlist (SKILL-driven redesign).
+ *
+ * Design read: a dense, scannable watchlist for deal-hunters who re-scan many items
+ * daily. Dark Linear-utilitarian language, single emerald "savings" accent locked
+ * across the page, system-mono tabular numerals, hairline-separated rows (no card
+ * chrome). Dials VARIANCE 4 / MOTION 3 / DENSITY 6. Off-black base (never pure #000),
+ * no gradients beyond one faint vignette, no decorative dots, no em-dashes.
+ * CSP-safe: self-hosted Hanken Grotesk woff2 under /fonts; numerals use the local
+ * system-monospace stack (no second font file). Shape lock: controls 10px, chips pill.
+ */
+
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/hanken-grotesk-latin.woff2') format('woff2');
+}
+
+:root {
+  --bg: #0c0e11;
+  --panel: #13161b;
+  --panel-2: #181c22;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-2: rgba(255, 255, 255, 0.14);
+
+  --text: #e8eaee;
+  --muted: #98a0ab;
+  --faint: #69707b;
+
+  --accent: #34d399; /* emerald = savings / price drop */
+  --accent-2: #6ee7b7;
+  --accent-soft: rgba(52, 211, 153, 0.13);
+  --danger: #f2555a;
+
+  --r-control: 10px;
+  --r-pill: 999px;
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ui: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  color: var(--text);
+  font-family: var(--ui);
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  background-image: radial-gradient(85% 50% at 50% -8%, rgba(52, 211, 153, 0.06), transparent 70%);
+  background-attachment: fixed;
+}
+
+:where(a, button, input):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Top bar (single line, ≤ 64px) ────────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: rgba(12, 14, 17, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.wordmark {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.topbar__meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+.page {
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.intro {
+  max-width: 44rem;
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* ── Add bar ──────────────────────────────────────────────────────────────── */
+.addbar {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  max-width: 40rem;
+}
+
+.addbar__input {
+  flex: 1 1 18rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  padding: 0.7rem 0.95rem;
+  transition: border-color 0.15s var(--ease);
+}
+
+.addbar__input::placeholder {
+  color: var(--faint);
+}
+
+.addbar__input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.addbar__btn {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-control);
+  padding: 0.7rem 1.25rem;
+  font: inherit;
+  font-weight: 700;
+  background: var(--accent);
+  color: #04241a;
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease);
+}
+
+.addbar__btn:hover {
+  background: var(--accent-2);
+}
+
+.addbar__btn:active {
+  transform: translateY(1px);
+}
+
+/* ── Board head ───────────────────────────────────────────────────────────── */
+.board-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 2.5rem 0 0.5rem;
+}
+
+.board-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.board-head__stat {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.board-head__stat b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Board (dense table) ──────────────────────────────────────────────────── */
+.board {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.board thead th {
+  position: sticky;
+  top: 60px;
+  z-index: 5;
+  text-align: left;
+  padding: 0.6rem 1rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border-2);
+}
+
+.board thead th.num {
+  text-align: right;
+}
+
+.board tbody td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.board tbody tr {
+  transition: background 0.14s var(--ease);
+  /* light row stagger on load */
+  animation: row-in 0.4s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+
+.board tbody tr:hover {
+  background: var(--panel-2);
+}
+
+.cell-name {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cell-retailer {
+  margin-top: 0.15rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.num {
+  text-align: right;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cell-now {
+  font-weight: 700;
+}
+
+.cell-was {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.delta {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.delta--none {
+  color: var(--faint);
+  font-weight: 600;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.55rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tag--live {
+  color: var(--accent);
+  border-color: rgba(52, 211, 153, 0.35);
+  background: var(--accent-soft);
+}
+
+.tag--dead {
+  color: var(--danger);
+  border-color: rgba(242, 85, 90, 0.35);
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+.foot {
+  margin-top: 2.5rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.foot a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.foot a:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Mobile: collapse the table to stacked rows (< 720px) ─────────────────── */
+@media (max-width: 720px) {
+  .board thead {
+    display: none;
+  }
+  .board,
+  .board tbody,
+  .board tr,
+  .board td {
+    display: block;
+    width: 100%;
+  }
+  .board tbody tr {
+    border: 1px solid var(--border);
+    border-radius: var(--r-control);
+    margin-bottom: 0.75rem;
+    padding: 0.4rem 0.6rem;
+  }
+  .board tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.4rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .board tbody td:last-child {
+    border-bottom: 0;
+  }
+  .board tbody td::before {
+    content: attr(data-label);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  .num,
+  .delta {
+    text-align: right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

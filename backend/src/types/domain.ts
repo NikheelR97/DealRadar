@@ -46,3 +46,28 @@ export interface AuthedUser {
   email: string;
   isAdmin: boolean;
 }
+
+/**
+ * Deal tier (HANDOVER §5). Ordered worst→best for the in-stock tiers;
+ * OUT_OF_STOCK is orthogonal (the current observation has no price).
+ */
+export type DealTier = 'NOT_A_DEAL' | 'MODEST' | 'GOOD' | 'EXCEPTIONAL' | 'OUT_OF_STOCK';
+
+/**
+ * Result of scoring a product's price history against its recent baseline.
+ * The scorer is pure and emits semantic fields only — badge glyphs are a UI
+ * concern (the frontend DealBadge maps tier → badge).
+ */
+export interface DealScore {
+  tier: DealTier;
+  /** Most recent observed price; null when the latest observation is out of stock. */
+  currentPrice: number | null;
+  /** Median of valid in-stock prices in the 90-day window; null when undeterminable. */
+  baseline: number | null;
+  /** (baseline - currentPrice) / baseline * 100, rounded to 2dp; null when no baseline. */
+  discountPct: number | null;
+  /** True only when the date is on/after 1 Nov AND the discount ≥ alert threshold. */
+  blackFridayAlert: boolean;
+  /** Human-readable explanation when a tier needs context (e.g. insufficient history). */
+  note?: string;
+}

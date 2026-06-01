@@ -319,6 +319,21 @@ Revisit them when the corresponding sprint opens.
 
 ---
 
+### S5 (Deal scoring — 2026-06-01)
+
+`scorer.ts` (`calculateDealScore`) lands as a pure, deterministic function:
+median-of-90-day-in-stock-prices baseline, the four discount tiers
+(NOT_A_DEAL / MODEST / GOOD / EXCEPTIONAL) plus OUT_OF_STOCK, and the
+Black-Friday alert flag. `now` is injected for testable window/cutoff logic.
+Full unit matrix (18 tests) passes at 100% coverage.
+
+| # | Finding | Why deferred | Revisit at |
+|---|---------|--------------|------------|
+| 1 | **The scorer is not yet wired into any API response.** `calculateDealScore` exists and is fully tested, but no route/service attaches a `DealScore` to `PublicItem`/`TrackedItem` yet — the API still returns raw `latestPrice`/`inStock`. | S5's scope is the algorithm + its unit-test matrix (the gate). Surfacing the score requires the history-fetch + serialisation path that the frontend cards/modal consume, which belongs with the UI work. | **S6/S7** — when `ProductCard`/`DealBadge` and the price-history modal are built, fetch the 90-day window and attach `DealScore` to the item responses (and the notification dispatch in S8 reads `blackFridayAlert`). |
+| 2 | **Baseline excludes the current observation and requires ≥1 prior in-window in-stock price** (else `NOT_A_DEAL` with an insufficient-history note). This is a deliberate "compare current *against* recent history" reading of HANDOVER §5, and it makes the single-record edge case fall out naturally. | Not a gap — documented here so a future reader doesn't mistake the `slice(1)` for an off-by-one. The median barely moves whether or not the current point is included once real history accrues. | No change needed; revisit only if product behaviour shows the exclusion materially skews scores on sparse histories. |
+
+---
+
 ## Risk Register
 
 | Risk | Likelihood | Impact | Mitigation |

@@ -121,7 +121,37 @@ describe('Tier C — best-effort scrapers degrade to blocked, never crash', () =
     } catch (err) {
       expect(err).toBeInstanceOf(ScraperError);
       expect((err as ScraperError).type).toBe('blocked');
+      // No product markup at all → the detail should read as a likely anti-bot block.
+      expect((err as ScraperError).detail).toContain('anti-bot block');
     }
+  });
+
+  it('flags possible selector drift (not a block) when product markup is present but no price', () => {
+    // A page that rendered real product markup (og:title resolved) but exposed no price is
+    // more likely selector drift than an anti-bot block. The error type stays `blocked`
+    // per the Tier C contract, but the detail must distinguish the two for `scrape_errors`.
+    const html =
+      '<html><head><meta property="og:title" content="Real Product" /></head>' +
+      '<body><h1>Real Product</h1><p>No price node here.</p></body></html>';
+    try {
+      makro.parse(html, URL_FOR);
+      expect.unreachable('should have thrown');
+    } catch (err) {
+      expect((err as ScraperError).type).toBe('blocked');
+      expect((err as ScraperError).detail).toContain('selector drift');
+    }
+  });
+
+  it('does not misread a genuine product page containing the word "denied" as blocked', () => {
+    // Guards the tightened challenge-marker list: bare "access denied" copy in a product
+    // description must NOT trigger the anti-bot heuristic — only specific vendor phrases do.
+    const html =
+      '<html><head><script type="application/ld+json">' +
+      '{"@type":"Product","name":"Smart Lock","offers":{"price":"1299","availability":"InStock"}}' +
+      '</script></head><body><p>Access denied to unauthorised users — keypad smart lock.</p></body></html>';
+    const result = makro.parse(html, URL_FOR);
+    expect(result.price).toBe(1299);
+    expect(result.inStock).toBe(true);
   });
 
   it('detects a Cloudflare "Just a moment..." challenge as blocked (makro fixture)', () => {

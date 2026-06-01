@@ -22,5 +22,8 @@ export const amazon = makeBestEffortScraper({
     '#corePrice_feature_div .a-offscreen',
     '.a-price .a-offscreen',
   ],
-  soldOutSelectors: ['#outOfStock', '#availability .a-color-price'],
+  // `#outOfStock` is Amazon's canonical sold-out container. We deliberately do NOT use
+  // `#availability .a-color-price` — that red price-styled span also appears on in-stock
+  // PDPs and would yield false out-of-stock readings. JSON-LD availability covers the rest.
+  soldOutSelectors: ['#outOfStock'],
 });

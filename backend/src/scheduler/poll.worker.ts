@@ -58,32 +58,40 @@ async function selectDueProducts(): Promise<DueProductRow[]> {
   );
 }
 
-/** Append the observation and advance `last_checked_at`; fills name/image/currency. */
+/**
+ * Append the observation and advance `last_checked_at` (filling name/image/currency)
+ * in a single data-modifying statement, so the price row and the cadence bump commit
+ * atomically — a crash can never leave a recorded price without advancing the clock.
+ */
 async function recordSuccess(productId: string, r: ScrapeResult): Promise<void> {
   await query(
-    `INSERT INTO price_history (product_id, price, in_stock, scrape_source)
-     VALUES ($1, $2, $3, $4)`,
-    [productId, r.price, r.inStock, r.source],
-  );
-  await query(
-    `UPDATE products
+    `WITH observation AS (
+       INSERT INTO price_history (product_id, price, in_stock, scrape_source)
+       VALUES ($1, $2, $3, $4)
+     )
+     UPDATE products
         SET last_checked_at = now(),
-            name = COALESCE($2, name),
-            image_url = COALESCE($3, image_url),
-            currency = $4
+            name = COALESCE($5, name),
+            image_url = COALESCE($6, image_url),
+            currency = $7
       WHERE id = $1`,
-    [productId, r.name, r.imageUrl, r.currency],
+    [productId, r.price, r.inStock, r.source, r.name, r.imageUrl, r.currency],
   );
 }
 
-/** Append a sanitised error and still advance `last_checked_at` (interval back-off). */
+/**
+ * Log a sanitised error and advance `last_checked_at` atomically (one statement), so a
+ * blocked product still backs off to its interval even if the process dies mid-write.
+ */
 async function recordError(productId: string, err: ScraperError): Promise<void> {
   await query(
-    `INSERT INTO scrape_errors (product_id, error_type, message)
-     VALUES ($1, $2, $3)`,
+    `WITH logged AS (
+       INSERT INTO scrape_errors (product_id, error_type, message)
+       VALUES ($1, $2, $3)
+     )
+     UPDATE products SET last_checked_at = now() WHERE id = $1`,
     [productId, err.type, err.detail.slice(0, 1_000)],
   );
-  await query('UPDATE products SET last_checked_at = now() WHERE id = $1', [productId]);
 }
 
 /** Scrape and persist one product. Never throws — failures are logged to the DB. */

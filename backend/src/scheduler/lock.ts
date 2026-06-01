@@ -21,6 +21,10 @@ export interface LockOutcome<T> {
  * checked-out client are always released, even if `fn` throws.
  */
 export async function withSchedulerLock<T>(fn: () => Promise<T>): Promise<LockOutcome<T>> {
+  // The advisory lock is session-scoped, so this client stays checked out for the whole
+  // tick (one of the pool's `max` connections). Safe for the single in-process tick here;
+  // if a tick is ever sized to run long (large batch × crawl-delay), keep `pool.max`
+  // headroom for the request path in mind.
   const client = await pool.connect();
   try {
     const res = await client.query<{ locked: boolean }>(

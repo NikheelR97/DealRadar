@@ -62,12 +62,11 @@ describe('runPollTick — success path', () => {
     expect(summary).toEqual({ selected: 1, succeeded: 1, failed: 0 });
     expect(deps.scrape).toHaveBeenCalledWith('https://koodoo.co.za/p');
 
-    const [hist] = callsMatching('INSERT INTO price_history');
-    expect(hist?.[1]).toEqual(['7', 199.99, true, 'cheerio']);
-
-    const [upd] = callsMatching('UPDATE products');
-    expect(upd?.[0]).toContain('last_checked_at = now()');
-    expect(upd?.[1]).toEqual(['7', 'Widget', 'https://cdn.example/w.jpg', 'ZAR']);
+    // One atomic statement: price INSERT + last_checked_at/name/image/currency UPDATE.
+    const [write] = callsMatching('INSERT INTO price_history');
+    expect(write?.[0]).toContain('UPDATE products');
+    expect(write?.[0]).toContain('last_checked_at = now()');
+    expect(write?.[1]).toEqual(['7', 199.99, true, 'cheerio', 'Widget', 'https://cdn.example/w.jpg', 'ZAR']);
 
     expect(callsMatching('INSERT INTO scrape_errors')).toHaveLength(0);
   });
@@ -79,8 +78,8 @@ describe('runPollTick — success path', () => {
     const summary = await runPollTick(makeDeps({ scrape: vi.fn().mockResolvedValue(oos) }));
 
     expect(summary.succeeded).toBe(1);
-    const [hist] = callsMatching('INSERT INTO price_history');
-    expect(hist?.[1]).toEqual(['9', null, false, 'cheerio']);
+    const [write] = callsMatching('INSERT INTO price_history');
+    expect(write?.[1]).toEqual(['9', null, false, 'cheerio', 'Widget', 'https://cdn.example/w.jpg', 'ZAR']);
   });
 });
 

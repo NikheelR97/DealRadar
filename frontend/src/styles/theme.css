@@ -67,8 +67,11 @@
   --border-2: rgba(255, 255, 255, 0.16);
 
   --text: #f2f2f0;
-  --muted: #8a8a86;
-  --faint: #5f5e5a;
+  /* Greyscale ramp tuned to clear WCAG AA on the off-black base: --muted ~6.5:1 and
+     --faint ~5:1 against --bg, so both stay legible on the small uppercase labels,
+     placeholder, and struck-through prices that use them (PRODUCT.md: WCAG 2.2 AA). */
+  --muted: #a6a6a1;
+  --faint: #868682;
 
   --accent: #c8ff00; /* acid lime = the drop signal ONLY (figures + focus) */
   --accent-2: #d8ff4d; /* lighter, hover only */
@@ -145,7 +148,7 @@ body::before {
   height: 60px;
   padding: 0 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(12, 14, 17, 0.82);
+  background: rgba(16, 16, 16, 0.82); /* matches --bg hue; was a stray bluish value */
   backdrop-filter: blur(8px);
 }
 

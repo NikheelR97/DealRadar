@@ -116,6 +116,63 @@ function view(product: TrackedProduct): DealView {
   return { product, pct, saved, tier };
 }
 
+// ── Board ordering ─────────────────────────────────────────────────────────────
+// A returning shopper scans for "what dropped, by how much" first, so the board sorts
+// rather than sitting in insertion order. Rows are grouped by lifecycle (active checks
+// up top, unreachable rows last) and ranked within their group by the chosen metric.
+
+type SortBy = 'drop' | 'saved' | 'recent';
+
+const SORT_LABEL: Record<SortBy, string> = {
+  drop: 'Biggest drop',
+  saved: 'Most saved',
+  recent: 'Recently checked',
+};
+
+const SORT_VALUES: readonly SortBy[] = ['drop', 'saved', 'recent'];
+
+// Persisted view prefs: a daily user shouldn't re-pick their sort every visit. Wrapped
+// in try/catch so a locked-down storage (private mode, blocked cookies) degrades quietly.
+const PREF_SORT = 'dealradar.sort';
+const PREF_DROPPED = 'dealradar.droppedOnly';
+
+function readSortPref(): SortBy {
+  try {
+    const v = localStorage.getItem(PREF_SORT);
+    if (v && (SORT_VALUES as readonly string[]).includes(v)) return v as SortBy;
+  } catch {
+    /* storage unavailable */
+  }
+  return 'drop';
+}
+
+function readDroppedPref(): boolean {
+  try {
+    return localStorage.getItem(PREF_DROPPED) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** Lower rank floats up: loading (just added) → priced → out of stock → unreachable. */
+function statusRank(p: TrackedProduct): number {
+  if (p.status === 'loading') return 0;
+  if (p.status === 'failed') return 3;
+  return p.inStock ? 1 : 2;
+}
+
+/** Sort metric for a row; only priced, in-stock rows carry a real value (others rank -1). */
+function sortValue(p: TrackedProduct, by: SortBy): number {
+  if (by === 'recent') return p.checkedAt ?? 0;
+  if (p.status !== 'ready' || !p.inStock) return -1;
+  const v = view(p);
+  return by === 'saved' ? v.saved : v.pct;
+}
+
+function isLiveDrop(p: TrackedProduct): boolean {
+  return p.status === 'ready' && p.inStock && view(p).pct > 0;
+}
+
 // ── Mocked price check (stands in for the backend until it's wired) ────────────
 
 const KNOWN_RETAILERS: ReadonlyArray<readonly [string, string]> = [
@@ -201,6 +258,7 @@ function FeaturedDeal({ deal }: { deal: DealView }): JSX.Element {
     <section className="featured">
       <h2 className="visually-hidden">Top drop right now</h2>
       <div className="featured__lead">
+        <span className="featured__flag">Top drop by %</span>
         <span className="featured__retailer">{product.retailer}</span>
         <p className="featured__name">{product.name}</p>
         <div className="featured__prices">
@@ -291,10 +349,13 @@ function FailedRow({
 function ReadyRow({
   deal,
   nowMs,
+  featured = false,
   onRemove,
 }: {
   deal: DealView;
   nowMs: number;
+  /** True when this row is the one spotlighted in the featured panel above. */
+  featured?: boolean;
   onRemove: (id: string) => void;
 }): JSX.Element {
   const { product, pct, saved, tier } = deal;
@@ -327,7 +388,13 @@ function ReadyRow({
             <span className={`tag tag--${tier}`}>{TIER_LABEL[tier]}</span>
             <RemoveButton id={product.id} name={product.name} onRemove={onRemove} />
           </div>
-          {product.checkedAt ? <span className="cell-meta">checked {ago(product.checkedAt, nowMs)}</span> : null}
+          {featured || product.checkedAt ? (
+            <span className="cell-meta">
+              {featured ? <span className="cell-meta__flag">Featured above</span> : null}
+              {featured && product.checkedAt ? ' · ' : null}
+              {product.checkedAt ? `checked ${ago(product.checkedAt, nowMs)}` : null}
+            </span>
+          ) : null}
         </div>
       </td>
     </tr>
@@ -434,11 +501,152 @@ function validateUrl(raw: string, existing: ReadonlySet<string>): { href: string
   return { href };
 }
 
+/** The track-a-URL form. Lives in the full hero when empty, and in a slim toolbar
+ *  once a watchlist exists, so the returning user isn't shown marketing every visit. */
+function AddBar({
+  inputRef,
+  draft,
+  formError,
+  onDraftChange,
+  onSubmit,
+}: {
+  inputRef: React.RefObject<HTMLInputElement>;
+  draft: string;
+  formError: string;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent) => void;
+}): JSX.Element {
+  return (
+    <form className="addbar" onSubmit={onSubmit} noValidate>
+      <label className="visually-hidden" htmlFor="track-url">
+        Product URL to track
+      </label>
+      <input
+        ref={inputRef}
+        id="track-url"
+        className="addbar__input"
+        type="url"
+        inputMode="url"
+        maxLength={MAX_URL_LENGTH}
+        placeholder="Paste a product URL to track"
+        value={draft}
+        onChange={(e) => onDraftChange(e.target.value)}
+        aria-invalid={formError ? true : undefined}
+        aria-describedby={formError ? 'track-url-error' : undefined}
+      />
+      <button className="addbar__btn" type="submit">
+        Track price
+      </button>
+      <kbd className="addbar__kbd" aria-hidden="true">
+        /
+      </kbd>
+      {formError ? (
+        <p className="addbar__error" id="track-url-error" role="alert">
+          {formError}
+        </p>
+      ) : null}
+    </form>
+  );
+}
+
+/** Sort + filter controls for the watchlist. Standard select + a pressed-state toggle;
+ *  no invented affordances (product register). */
+function BoardTools({
+  sortBy,
+  onSortChange,
+  droppedOnly,
+  onToggleDropped,
+  droppedCount,
+  oosCount,
+  onClearOos,
+}: {
+  sortBy: SortBy;
+  onSortChange: (value: SortBy) => void;
+  droppedOnly: boolean;
+  onToggleDropped: () => void;
+  droppedCount: number;
+  oosCount: number;
+  onClearOos: () => void;
+}): JSX.Element {
+  return (
+    <div className="board-tools">
+      {oosCount > 0 ? (
+        <button type="button" className="board-clear" onClick={onClearOos}>
+          Clear out of stock
+          <span className="board-filter__count">{oosCount}</span>
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className="board-filter"
+        aria-pressed={droppedOnly}
+        onClick={onToggleDropped}
+      >
+        Dropped only
+        <span className="board-filter__count">{droppedCount}</span>
+      </button>
+      <label className="board-sort">
+        <span className="board-sort__label">Sort</span>
+        <select
+          className="board-sort__select"
+          value={sortBy}
+          onChange={(e) => onSortChange(e.target.value as SortBy)}
+        >
+          {(Object.keys(SORT_LABEL) as SortBy[]).map((key) => (
+            <option key={key} value={key}>
+              {SORT_LABEL[key]}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+/** Inline, collapsed-by-default legend mapping each chip to its percent band. The bands
+ *  are derived from the same DEAL_THRESHOLD_* constants the rows score against, so the
+ *  legend can never drift from the actual scoring. Native <details>: keyboard-accessible,
+ *  no modal, no JS state. */
+function TierLegend(): JSX.Element {
+  const bands: ReadonlyArray<{ tier: Tier; range: string }> = [
+    { tier: 'exceptional', range: `${DEAL_THRESHOLD_EXCEPTIONAL_PCT}% or more below median` },
+    {
+      tier: 'good',
+      range: `${DEAL_THRESHOLD_GOOD_PCT}–${DEAL_THRESHOLD_EXCEPTIONAL_PCT - 1}% below median`,
+    },
+    {
+      tier: 'modest',
+      range: `${DEAL_THRESHOLD_MODEST_PCT}–${DEAL_THRESHOLD_GOOD_PCT - 1}% below median`,
+    },
+    { tier: 'flat', range: `under ${DEAL_THRESHOLD_MODEST_PCT}% below median` },
+  ];
+  return (
+    <details className="legend">
+      <summary className="legend__summary">How tiers are scored</summary>
+      <ul className="legend__list">
+        {bands.map((b) => (
+          <li key={b.tier} className="legend__row">
+            <span className={`tag tag--${b.tier}`}>{TIER_LABEL[b.tier]}</span>
+            <span className="legend__range">{b.range}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function App(): JSX.Element {
   const [products, setProducts] = useState<TrackedProduct[]>(() => SEED.map((p) => ({ ...p })));
   const [draft, setDraft] = useState('');
   const [formError, setFormError] = useState('');
   const [announce, setAnnounce] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>(readSortPref);
+  const [droppedOnly, setDroppedOnly] = useState<boolean>(readDroppedPref);
+  // Last removal (one row, or a bulk clear), kept briefly so a mistake can be undone.
+  const [removed, setRemoved] = useState<{
+    items: ReadonlyArray<{ product: TrackedProduct; index: number }>;
+    label: string;
+  } | null>(null);
   // Live clock so relative "checked" labels stay honest without a manual refresh.
   const [nowMs, setNowMs] = useState(() => Date.now());
 
@@ -448,6 +656,8 @@ export function App(): JSX.Element {
   const trackedHrefs = useRef<Set<string>>(new Set());
   // Pending mock-check timers, cleared on unmount to avoid setState-after-unmount.
   const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  // Auto-dismiss timer for the undo affordance.
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), MINUTE);
@@ -459,8 +669,60 @@ export function App(): JSX.Element {
     return () => {
       pending.forEach(clearTimeout);
       pending.clear();
+      clearTimeout(undoTimer.current);
     };
   }, []);
+
+  // "/" jumps to the add bar from anywhere on the board (skipped while already typing).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent): void {
+      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = document.activeElement;
+      const typing =
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement ||
+        (el instanceof HTMLElement && el.isContentEditable);
+      if (typing) return;
+      e.preventDefault();
+      inputRef.current?.focus();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREF_SORT, sortBy);
+    } catch {
+      /* storage unavailable */
+    }
+  }, [sortBy]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(PREF_DROPPED, droppedOnly ? '1' : '0');
+    } catch {
+      /* storage unavailable */
+    }
+  }, [droppedOnly]);
+
+  function onDraftChange(value: string): void {
+    setDraft(value);
+    if (formError) setFormError('');
+  }
+
+  /** Stash a removal (single or bulk) and arm the 8s undo window. */
+  function queueUndo(
+    items: ReadonlyArray<{ product: TrackedProduct; index: number }>,
+    label: string,
+    announcement: string,
+  ): void {
+    setRemoved({ items, label });
+    setAnnounce(announcement);
+    clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setRemoved(null), 8000);
+  }
 
   /** Schedule a mocked price check that resolves a row to `ready` (or stays failed on retry miss). */
   function scheduleCheck(id: string, label: string): void {
@@ -514,9 +776,44 @@ export function App(): JSX.Element {
   }
 
   function handleRemove(id: string): void {
-    const target = products.find((p) => p.id === id);
+    const index = products.findIndex((p) => p.id === id);
+    const target = products[index];
+    if (!target) return;
     setProducts((prev) => prev.filter((p) => p.id !== id));
-    setAnnounce(`Stopped tracking ${target?.name ?? 'product'}.`);
+    queueUndo(
+      [{ product: target, index }],
+      `Stopped tracking ${target.name}.`,
+      `Stopped tracking ${target.name}. Undo available.`,
+    );
+  }
+
+  function handleClearOos(): void {
+    const items = products
+      .map((product, index) => ({ product, index }))
+      .filter(({ product }) => product.status === 'ready' && !product.inStock);
+    if (items.length === 0) return;
+    const ids = new Set(items.map((i) => i.product.id));
+    setProducts((prev) => prev.filter((p) => !ids.has(p.id)));
+    const noun = `out-of-stock item${items.length === 1 ? '' : 's'}`;
+    queueUndo(items, `Removed ${items.length} ${noun}.`, `Removed ${items.length} ${noun}. Undo available.`);
+  }
+
+  function handleUndo(): void {
+    if (!removed) return;
+    // Restore at original indices, ascending, so each splice lands where the row was.
+    const items = [...removed.items].sort((a, b) => a.index - b.index);
+    setProducts((prev) => {
+      const next = prev.slice();
+      items.forEach(({ product, index }) => next.splice(Math.min(index, next.length), 0, product));
+      return next;
+    });
+    clearTimeout(undoTimer.current);
+    setRemoved(null);
+    setAnnounce(
+      items.length === 1
+        ? `Restored ${items[0]!.product.name} to the watchlist.`
+        : `Restored ${items.length} items to the watchlist.`,
+    );
   }
 
   // Metrics and the featured deal trust only ready, in-stock rows; loading/failed prices are unverified.
@@ -540,6 +837,19 @@ export function App(): JSX.Element {
     null,
   );
 
+  // The featured (top-drop-by-%) product, linked back to its row so the panel reads as a
+  // spotlight on the list rather than a second copy of the same deal.
+  const featuredId = topDrop?.product.id;
+
+  // The rendered board: optionally filtered to live drops, then sorted by the chosen metric.
+  // Sort is stable within a status group, so loading rows stay on top and unreachable rows last.
+  const visible = products
+    .filter((p) => !droppedOnly || isLiveDrop(p))
+    .slice()
+    .sort((a, b) => statusRank(a) - statusRank(b) || sortValue(b, sortBy) - sortValue(a, sortBy));
+  const filteredEmpty = !isEmpty && visible.length === 0;
+  const oosCount = products.filter((p) => p.status === 'ready' && !p.inStock).length;
+
   return (
     <>
       <header className="topbar">
@@ -551,41 +861,31 @@ export function App(): JSX.Element {
       </header>
 
       <main className="page">
-        <section className="hero">
-          <h2 className="hero__title">Catch the drop the moment it lands.</h2>
-          <p className="hero__sub">
-            Track South African retailer prices and get the saving the second it appears.
-          </p>
-          <form className="addbar" onSubmit={handleAdd} noValidate>
-            <label className="visually-hidden" htmlFor="track-url">
-              Product URL to track
-            </label>
-            <input
-              ref={inputRef}
-              id="track-url"
-              className="addbar__input"
-              type="url"
-              inputMode="url"
-              maxLength={MAX_URL_LENGTH}
-              placeholder="Paste a product URL to track"
-              value={draft}
-              onChange={(e) => {
-                setDraft(e.target.value);
-                if (formError) setFormError('');
-              }}
-              aria-invalid={formError ? true : undefined}
-              aria-describedby={formError ? 'track-url-error' : undefined}
+        {isEmpty ? (
+          <section className="hero">
+            <h2 className="hero__title">Catch the drop the moment it lands.</h2>
+            <p className="hero__sub">
+              Track South African retailer prices and get the saving the second it appears.
+            </p>
+            <AddBar
+              inputRef={inputRef}
+              draft={draft}
+              formError={formError}
+              onDraftChange={onDraftChange}
+              onSubmit={handleAdd}
             />
-            <button className="addbar__btn" type="submit">
-              Track price
-            </button>
-            {formError ? (
-              <p className="addbar__error" id="track-url-error" role="alert">
-                {formError}
-              </p>
-            ) : null}
-          </form>
-        </section>
+          </section>
+        ) : (
+          <section className="addtool" aria-label="Track a product">
+            <AddBar
+              inputRef={inputRef}
+              draft={draft}
+              formError={formError}
+              onDraftChange={onDraftChange}
+              onSubmit={handleAdd}
+            />
+          </section>
+        )}
 
         {!isEmpty ? (
           <>
@@ -593,7 +893,7 @@ export function App(): JSX.Element {
               <Metric label="Tracked" value={String(products.length)} />
               <Metric label="Live drops" value={String(dropped.length)} accent />
               <Metric label="Biggest saving" value={biggest ? rand(biggest.saved) : '—'} accent />
-              <Metric label="Average drop" value={avgDrop ? `${avgDrop}%` : '—'} />
+              <Metric label="Avg of dropped" value={avgDrop ? `${avgDrop}%` : '—'} />
             </section>
 
             {topDrop ? <FeaturedDeal deal={topDrop} /> : null}
@@ -605,17 +905,39 @@ export function App(): JSX.Element {
           <span className="board-head__stat">
             <b>{products.length}</b> tracked / <b>{dropped.length}</b> dropped
           </span>
+          {!isEmpty ? (
+            <BoardTools
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              droppedOnly={droppedOnly}
+              onToggleDropped={() => setDroppedOnly((v) => !v)}
+              droppedCount={dropped.length}
+              oosCount={oosCount}
+              onClearOos={handleClearOos}
+            />
+          ) : null}
         </div>
 
         {!isEmpty ? (
-          <p className="board-sync">
-            {lastChecked ? `Prices last checked ${ago(lastChecked, nowMs)}` : 'Checking prices'}, scored
-            against each product&rsquo;s 90-day median, not the retailer&rsquo;s &ldquo;was&rdquo;.
-          </p>
+          <>
+            <p className="board-sync">
+              {lastChecked ? `Prices last checked ${ago(lastChecked, nowMs)}` : 'Checking prices'},
+              scored against each product&rsquo;s 90-day median, not the retailer&rsquo;s
+              &ldquo;was&rdquo;.
+            </p>
+            <TierLegend />
+          </>
         ) : null}
 
         {isEmpty ? (
           <EmptyState onAddFocus={() => inputRef.current?.focus()} />
+        ) : filteredEmpty ? (
+          <p className="board-blank">
+            No live drops in your watchlist right now.{' '}
+            <button type="button" className="linkbtn" onClick={() => setDroppedOnly(false)}>
+              Show all {products.length} tracked
+            </button>
+          </p>
         ) : (
           <table className="board">
             <thead>
@@ -631,7 +953,7 @@ export function App(): JSX.Element {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => {
+              {visible.map((product) => {
                 if (product.status === 'loading') {
                   return <LoadingRow key={product.id} product={product} onRemove={handleRemove} />;
                 }
@@ -647,12 +969,27 @@ export function App(): JSX.Element {
                   );
                 }
                 return (
-                  <ReadyRow key={product.id} deal={view(product)} nowMs={nowMs} onRemove={handleRemove} />
+                  <ReadyRow
+                    key={product.id}
+                    deal={view(product)}
+                    nowMs={nowMs}
+                    featured={product.id === featuredId}
+                    onRemove={handleRemove}
+                  />
                 );
               })}
             </tbody>
           </table>
         )}
+
+        {removed ? (
+          <div className="undobar">
+            <span className="undobar__text">{removed.label}</span>
+            <button type="button" className="undobar__btn" onClick={handleUndo}>
+              Undo
+            </button>
+          </div>
+        ) : null}
 
         <Footer />
       </main>

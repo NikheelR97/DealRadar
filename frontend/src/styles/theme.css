@@ -73,6 +73,11 @@
   --muted: #a6a6a1;
   --faint: #868682;
 
+  /* ACCENT RULE (locked): acid lime marks a figure that quantifies a REAL drop and
+     nothing else. In: per-row drop %/saved, the Live-drops count, Biggest-saving,
+     the board-head "dropped" tally, and focus rings. OUT: the Tracked count, the
+     "Avg of dropped" aggregate, labels, chrome, hover. Tier prominence uses a white
+     fill, never lime, so lime stays scarce and always means "money off, now". */
   --accent: #c8ff00; /* acid lime = the drop signal ONLY (figures + focus) */
   --accent-2: #d8ff4d; /* lighter, hover only */
   --accent-ink: #141400; /* near-black on lime, used only where lime fills */
@@ -88,6 +93,12 @@
   --r-panel: 14px;
   --r-control: 10px;
   --r-pill: 999px;
+
+  /* Semantic z-index scale (low -> high). No arbitrary 999s; every layer is named. */
+  --z-thead: 5;
+  --z-sticky: 20;
+  --z-grain: 60;
+  --z-toast: 70;
 
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ui: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
@@ -119,7 +130,7 @@ body::before {
   content: '';
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-grain);
   pointer-events: none;
   opacity: 0.04;
   mix-blend-mode: overlay;
@@ -147,7 +158,7 @@ body::before {
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -295,6 +306,35 @@ body::before {
   background: var(--danger);
 }
 
+/* Slim add toolbar shown once a watchlist exists: same control, no marketing weight,
+   so the returning daily user lands on their data instead of a hero every visit. */
+.addtool {
+  margin-bottom: 1.75rem;
+}
+
+.addtool .addbar {
+  max-width: none;
+}
+
+/* "/" hint on the add input. Hidden on touch / narrow viewports where there's no key. */
+.addbar__kbd {
+  display: none;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1;
+  color: var(--faint);
+  padding: 0.28rem 0.5rem;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+}
+
+@media (min-width: 721px) and (hover: hover) {
+  .addtool .addbar__kbd {
+    display: inline-flex;
+  }
+}
+
 /* ── Metric strip ─────────────────────────────────────────────────────────── */
 .metrics {
   display: grid;
@@ -351,7 +391,24 @@ body::before {
   background: var(--panel);
 }
 
+/* Names why this panel exists (top drop by %), so it reads as a spotlight on one row
+   rather than a mystery "best" that competes with the Biggest-saving metric. */
+.featured__flag {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+}
+
 .featured__retailer {
+  display: block;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -422,8 +479,7 @@ body::before {
 .board-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   flex-wrap: wrap;
   margin: 2.5rem 0 0.5rem;
 }
@@ -448,6 +504,87 @@ body::before {
   font-weight: 700;
 }
 
+/* Sort + filter sit at the end of the board head, pushed right on a roomy row. */
+.board-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.board-filter,
+.board-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  padding: 0.34rem 0.75rem;
+  transition: color 0.14s var(--ease), background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.board-filter:hover,
+.board-clear:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.board-filter__count {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--faint);
+}
+
+/* Pressed = filter active: inverts to the white-fill "on" treatment used for primary
+   controls (never lime; lime stays on the drop figures themselves). */
+.board-filter[aria-pressed='true'] {
+  color: var(--bg);
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.board-filter[aria-pressed='true'] .board-filter__count {
+  color: var(--bg);
+}
+
+.board-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.board-sort__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.board-sort__select {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-control);
+  padding: 0.34rem 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.14s var(--ease);
+}
+
+.board-sort__select:hover {
+  border-color: var(--text);
+}
+
 /* Global freshness + baseline statement: the one place "90-day median" is spelled out,
    so the per-row figures can stay compact ("below median") without repeating it. */
 .board-sync {
@@ -456,6 +593,77 @@ body::before {
   line-height: 1.5;
   color: var(--faint);
   text-wrap: pretty;
+}
+
+/* ── Tier legend (collapsed disclosure: teaches the scoring once populated) ── */
+.legend {
+  margin: 0.1rem 0 0.85rem;
+}
+
+.legend__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  width: fit-content;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  list-style: none;
+}
+
+.legend__summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron that flips on open. */
+.legend__summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 0.15s var(--ease);
+}
+
+.legend[open] .legend__summary::after {
+  transform: rotate(-135deg);
+}
+
+.legend__summary:hover {
+  color: var(--text);
+}
+
+.legend__list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0.85rem 1rem;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 30rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--panel);
+}
+
+.legend__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.legend__row .tag {
+  flex: none;
+  min-width: 6.75rem;
+  text-align: center;
+}
+
+.legend__range {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 /* ── Board (dense table) ──────────────────────────────────────────────────── */
@@ -468,7 +676,7 @@ body::before {
 .board thead th {
   position: sticky;
   top: 60px;
-  z-index: 5;
+  z-index: var(--z-thead);
   text-align: left;
   padding: 0.6rem 1rem;
   font-size: 0.7rem;
@@ -671,6 +879,12 @@ body::before {
   color: var(--faint);
 }
 
+/* Ties a row to the featured panel above it (recognition, not a duplicate item). */
+.cell-meta__flag {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 /* Skeleton bars for a price check in flight. Right-aligned to match .num cells. */
 .skel {
   display: inline-block;
@@ -840,6 +1054,77 @@ body::before {
   }
 }
 
+/* ── Filtered-empty board (dropped-only with nothing live) ─────────────────── */
+.board-blank {
+  margin: 0.5rem 0 0;
+  padding: 1.5rem 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Inline text button (matches a link but is a real <button>). */
+.linkbtn {
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  color: var(--text);
+  background: none;
+  border: 0;
+  padding: 0;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.linkbtn:hover {
+  color: #ffffff;
+}
+
+/* ── Undo affordance (recover a mistaken "stop tracking") ──────────────────── */
+/* Fixed bottom toast so it stays reachable no matter how long the watchlist is. */
+.undobar {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 0.7rem 0.8rem 0.7rem 1rem;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-control);
+  background: var(--panel-2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: toast-in 0.22s var(--ease);
+}
+
+.undobar__text {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.undobar__btn {
+  flex: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  padding: 0.32rem 0.85rem;
+  transition: background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.undobar__btn:hover {
+  background: var(--panel-2);
+  border-color: var(--text);
+}
+
 /* ── Footer ───────────────────────────────────────────────────────────────── */
 .foot {
   margin-top: 2.5rem;
@@ -867,6 +1152,17 @@ body::before {
   }
   to {
     background-position: -200% 0;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 0.6rem);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }
 
@@ -906,6 +1202,14 @@ body::before {
   }
   .featured__signal {
     align-items: flex-start;
+  }
+  .board-tools {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .board-sort {
+    margin-left: auto;
   }
   .board thead {
     display: none;

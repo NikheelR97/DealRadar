@@ -1,15 +1,21 @@
 /**
- * DealRadar - "Deal board" watchlist (SKILL-driven redesign).
+ * DealRadar - watchlist theme (SKILL-driven redesign, pass 2).
  *
- * Design read: a dense, scannable watchlist for deal-hunters who re-scan many items
- * daily. Dark Linear-utilitarian language, single emerald "savings" accent locked
- * across the page, system-mono tabular numerals, hairline-separated rows (no card
- * chrome). Dials VARIANCE 4 / MOTION 3 / DENSITY 6. Off-black base (never pure #000),
- * no gradients beyond one faint vignette, no decorative dots, no em-dashes.
- * CSP-safe: self-hosted Hanken Grotesk woff2 under /fonts; numerals use the local
- * system-monospace stack (no second font file). Shape lock: controls 10px, chips pill.
+ * Design read: a dense, scannable price-watch product UI. Dark Linear-utilitarian
+ * language; ONE acid-lime accent reserved strictly for the drop figures; system-mono
+ * tabular numerals for every figure; hairline structure over card chrome. Three
+ * focal moments earn the hierarchy: metric strip -> featured best-drop -> watchlist.
+ * Dials VARIANCE 4 / MOTION 4 / DENSITY 6. Off-black base (never pure #000), one
+ * faint vignette, no decorative dots, no em-dashes (SKILL 9.G).
+ *
+ * Shape lock (documented multi-radius rule): surfaces/panels 14px, controls 10px,
+ * chips full-pill. Self-hosted Hanken Grotesk woff2 under /fonts (CSP-safe);
+ * numerals use the local system-monospace stack (no second font file).
  */
 
+/* Body grotesk (Hanken). Display = Bricolage Grotesque (characterful headers).
+   Figures = Spline Sans Mono (the data is the subject, so it gets a real voice).
+   All self-hosted woff2 under /fonts, no runtime external requests. */
 @font-face {
   font-family: 'Hanken Grotesk';
   font-style: normal;
@@ -18,28 +24,86 @@
   src: url('/fonts/hanken-grotesk-latin.woff2') format('woff2');
 }
 
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/bricolage-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/fonts/bricolage-800.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Spline Sans Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/spline-mono-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Spline Sans Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/spline-mono-700.woff2') format('woff2');
+}
+
 :root {
-  --bg: #0c0e11;
-  --panel: #13161b;
-  --panel-2: #181c22;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-2: rgba(255, 255, 255, 0.14);
+  /* Stark mono + pop: near-neutral greyscale UI, ONE acid-lime accent reserved
+     strictly for the drop figures (and focus rings). 95% of the page is mono;
+     the pop carries all the signal. */
+  --bg: #101010;
+  --panel: #181818;
+  --panel-2: #202020;
+  --border: rgba(255, 255, 255, 0.09);
+  --border-2: rgba(255, 255, 255, 0.16);
 
-  --text: #e8eaee;
-  --muted: #98a0ab;
-  --faint: #69707b;
+  --text: #f2f2f0;
+  /* Greyscale ramp tuned to clear WCAG AA on the off-black base: --muted ~6.5:1 and
+     --faint ~5:1 against --bg, so both stay legible on the small uppercase labels,
+     placeholder, and struck-through prices that use them (PRODUCT.md: WCAG 2.2 AA). */
+  --muted: #a6a6a1;
+  --faint: #868682;
 
-  --accent: #34d399; /* emerald = savings / price drop */
-  --accent-2: #6ee7b7;
-  --accent-soft: rgba(52, 211, 153, 0.13);
-  --danger: #f2555a;
+  /* ACCENT RULE (locked): acid lime marks a figure that quantifies a REAL drop and
+     nothing else. In: per-row drop %/saved, the Live-drops count, Biggest-saving,
+     the board-head "dropped" tally, and focus rings. OUT: the Tracked count, the
+     "Avg of dropped" aggregate, labels, chrome, hover. Tier prominence uses a white
+     fill, never lime, so lime stays scarce and always means "money off, now". */
+  --accent: #c8ff00; /* acid lime = the drop signal ONLY (figures + focus) */
+  --accent-2: #d8ff4d; /* lighter, hover only */
+  --accent-ink: #141400; /* near-black on lime, used only where lime fills */
+  --accent-soft: rgba(200, 255, 0, 0.12);
+  --accent-line: rgba(200, 255, 0, 0.4);
 
+  /* The only non-lime semantic colour: a calm, desaturated red for input-validation
+     errors the user must fix. ~5.6:1 on --bg (WCAG AA). Never used for deal signal. */
+  --danger: #f2a39a;
+  --danger-soft: rgba(242, 163, 154, 0.1);
+  --danger-line: rgba(242, 163, 154, 0.45);
+
+  --r-panel: 14px;
   --r-control: 10px;
   --r-pill: 999px;
 
+  /* Semantic z-index scale (low -> high). No arbitrary 999s; every layer is named. */
+  --z-thead: 5;
+  --z-sticky: 20;
+  --z-grain: 60;
+  --z-toast: 70;
+
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --ui: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
-  --mono: ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
+  --display: 'Bricolage Grotesque', 'Hanken Grotesk', system-ui, sans-serif;
+  --mono: 'Spline Sans Mono', ui-monospace, 'Cascadia Code', 'SF Mono', Menlo, Consolas, monospace;
 }
 
 *,
@@ -54,9 +118,23 @@ body {
   color: var(--text);
   font-family: var(--ui);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   background-color: var(--bg);
-  background-image: radial-gradient(85% 50% at 50% -8%, rgba(52, 211, 153, 0.06), transparent 70%);
+  background-image: radial-gradient(80% 46% at 50% -10%, rgba(255, 255, 255, 0.05), transparent 70%);
   background-attachment: fixed;
+}
+
+/* Film grain: fixed, non-interactive, single GPU layer (SKILL 6.E). Gives the flat
+   graphite real material depth. Inline SVG noise, no external request. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-grain);
+  pointer-events: none;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 :where(a, button, input):focus-visible {
@@ -76,26 +154,53 @@ body {
   border: 0;
 }
 
-/* ── Top bar (single line, ≤ 64px) ────────────────────────────────────────── */
+/* ── Top bar (single line, <= 64px) ───────────────────────────────────────── */
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 60px;
   padding: 0 1.5rem;
   border-bottom: 1px solid var(--border);
-  background: rgba(12, 14, 17, 0.82);
+  background: rgba(16, 16, 16, 0.82); /* matches --bg hue; was a stray bluish value */
   backdrop-filter: blur(8px);
 }
 
 .wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
   margin: 0;
-  font-size: 1.15rem;
+  font-family: var(--display);
+  font-size: 1.2rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+}
+
+.mark {
+  position: relative;
+  display: inline-flex;
+  color: var(--text);
+  line-height: 0;
+}
+
+.mark__ping {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: var(--r-pill);
+  border: 1.4px solid var(--text);
+  opacity: 0;
+}
+
+/* Ping only while DealRadar is actively checking a price (motion conveys state). */
+.mark--scanning .mark__ping {
+  animation: ping 1.6s var(--ease) infinite;
 }
 
 .topbar__meta {
@@ -107,12 +212,27 @@ body {
 .page {
   max-width: 64rem;
   margin: 0 auto;
-  padding: 2.5rem 1.5rem 4rem;
+  padding: 2.75rem 1.5rem 4rem;
 }
 
-.intro {
-  max-width: 44rem;
-  margin: 0 0 1.5rem;
+/* ── Hero ─────────────────────────────────────────────────────────────────── */
+.hero {
+  margin-bottom: 2.25rem;
+}
+
+.hero__title {
+  margin: 0;
+  max-width: 20ch;
+  font-family: var(--display);
+  font-size: clamp(1.9rem, 1.1rem + 3vw, 3rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+
+.hero__sub {
+  max-width: 46ch;
+  margin: 0.85rem 0 1.5rem;
   font-size: 1rem;
   line-height: 1.55;
   color: var(--muted);
@@ -133,7 +253,7 @@ body {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--r-control);
-  padding: 0.7rem 0.95rem;
+  padding: 0.8rem 0.95rem;
   transition: border-color 0.15s var(--ease);
 }
 
@@ -151,37 +271,225 @@ body {
   cursor: pointer;
   border: 0;
   border-radius: var(--r-control);
-  padding: 0.7rem 1.25rem;
+  padding: 0.8rem 1.25rem;
   font: inherit;
   font-weight: 700;
-  background: var(--accent);
-  color: #04241a;
+  background: var(--text);
+  color: var(--bg);
   transition: background 0.15s var(--ease), transform 0.1s var(--ease);
 }
 
 .addbar__btn:hover {
-  background: var(--accent-2);
+  background: #ffffff;
 }
 
 .addbar__btn:active {
   transform: translateY(1px);
 }
 
+.addbar__error {
+  flex-basis: 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.addbar__error::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--danger);
+}
+
+/* Slim add toolbar shown once a watchlist exists: same control, no marketing weight,
+   so the returning daily user lands on their data instead of a hero every visit. */
+.addtool {
+  margin-bottom: 1.75rem;
+}
+
+.addtool .addbar {
+  max-width: none;
+}
+
+/* "/" hint on the add input. Hidden on touch / narrow viewports where there's no key. */
+.addbar__kbd {
+  display: none;
+  align-self: center;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1;
+  color: var(--faint);
+  padding: 0.28rem 0.5rem;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+}
+
+@media (min-width: 721px) and (hover: hover) {
+  .addtool .addbar__kbd {
+    display: inline-flex;
+  }
+}
+
+/* ── Metric strip ─────────────────────────────────────────────────────────── */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 1.15rem;
+  border-left: 1px solid var(--border);
+}
+
+.metric:first-child {
+  border-left: 0;
+}
+
+.metric__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.metric__value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.metric__value--accent {
+  color: var(--accent);
+}
+
+/* ── Featured best-drop (the payoff) ──────────────────────────────────────── */
+.featured {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-panel);
+  background: var(--panel);
+}
+
+/* Names why this panel exists (top drop by %), so it reads as a spotlight on one row
+   rather than a mystery "best" that competes with the Biggest-saving metric. */
+.featured__flag {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  border: 1px solid var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.featured__retailer {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.featured__name {
+  margin: 0.4rem 0 0.55rem;
+  font-family: var(--ui);
+  font-size: 1.28rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.featured__prices {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.featured__baseline {
+  margin: 0.5rem 0 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.featured__now {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.featured__was {
+  font-size: 0.9rem;
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.featured__signal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+}
+
+.featured__pct {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.featured__saved {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
 /* ── Board head ───────────────────────────────────────────────────────────── */
 .board-head {
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   flex-wrap: wrap;
   margin: 2.5rem 0 0.5rem;
 }
 
 .board-head h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-family: var(--display);
+  font-size: 1.15rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .board-head__stat {
@@ -196,6 +504,168 @@ body {
   font-weight: 700;
 }
 
+/* Sort + filter sit at the end of the board head, pushed right on a roomy row. */
+.board-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
+}
+
+.board-filter,
+.board-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  padding: 0.34rem 0.75rem;
+  transition: color 0.14s var(--ease), background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.board-filter:hover,
+.board-clear:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.board-filter__count {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--faint);
+}
+
+/* Pressed = filter active: inverts to the white-fill "on" treatment used for primary
+   controls (never lime; lime stays on the drop figures themselves). */
+.board-filter[aria-pressed='true'] {
+  color: var(--bg);
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.board-filter[aria-pressed='true'] .board-filter__count {
+  color: var(--bg);
+}
+
+.board-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.board-sort__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.board-sort__select {
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-control);
+  padding: 0.34rem 0.6rem;
+  cursor: pointer;
+  transition: border-color 0.14s var(--ease);
+}
+
+.board-sort__select:hover {
+  border-color: var(--text);
+}
+
+/* Global freshness + baseline statement: the one place "90-day median" is spelled out,
+   so the per-row figures can stay compact ("below median") without repeating it. */
+.board-sync {
+  margin: 0.1rem 0 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--faint);
+  text-wrap: pretty;
+}
+
+/* ── Tier legend (collapsed disclosure: teaches the scoring once populated) ── */
+.legend {
+  margin: 0.1rem 0 0.85rem;
+}
+
+.legend__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  width: fit-content;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  list-style: none;
+}
+
+.legend__summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chevron that flips on open. */
+.legend__summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 0.15s var(--ease);
+}
+
+.legend[open] .legend__summary::after {
+  transform: rotate(-135deg);
+}
+
+.legend__summary:hover {
+  color: var(--text);
+}
+
+.legend__list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0.85rem 1rem;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 30rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-control);
+  background: var(--panel);
+}
+
+.legend__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.legend__row .tag {
+  flex: none;
+  min-width: 6.75rem;
+  text-align: center;
+}
+
+.legend__range {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 /* ── Board (dense table) ──────────────────────────────────────────────────── */
 .board {
   width: 100%;
@@ -206,7 +676,7 @@ body {
 .board thead th {
   position: sticky;
   top: 60px;
-  z-index: 5;
+  z-index: var(--z-thead);
   text-align: left;
   padding: 0.6rem 1rem;
   font-size: 0.7rem;
@@ -229,14 +699,17 @@ body {
 }
 
 .board tbody tr {
+  position: relative;
   transition: background 0.14s var(--ease);
-  /* light row stagger on load */
-  animation: row-in 0.4s var(--ease) both;
-  animation-delay: calc(var(--i, 0) * 50ms);
 }
 
 .board tbody tr:hover {
   background: var(--panel-2);
+}
+
+/* subtle greyscale edge on hover - lime stays reserved for the drop figures */
+.board tbody tr:hover td:first-child {
+  box-shadow: inset 2px 0 0 var(--muted);
 }
 
 .cell-name {
@@ -272,10 +745,19 @@ body {
 }
 
 .delta {
+  display: block;
   font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--accent);
+}
+
+.delta-saved {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .delta--none {
@@ -283,28 +765,364 @@ body {
   font-weight: 600;
 }
 
+/* ── Deal-quality chips (tiered, single accent family) ────────────────────── */
 .tag {
   display: inline-block;
   font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 0.22rem 0.55rem;
+  padding: 0.24rem 0.6rem;
   border-radius: var(--r-pill);
   border: 1px solid var(--border-2);
   color: var(--muted);
   white-space: nowrap;
 }
 
-.tag--live {
-  color: var(--accent);
-  border-color: rgba(52, 211, 153, 0.35);
-  background: var(--accent-soft);
+.tag--exceptional {
+  /* greyscale prominence: solid white fill, not lime (pop reserved for figures) */
+  color: var(--bg);
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.tag--good {
+  color: var(--text);
+  border-color: var(--border-2);
+}
+
+.tag--modest {
+  color: var(--muted);
+  border-color: var(--border-2);
+}
+
+.tag--flat {
+  color: var(--faint);
 }
 
 .tag--dead {
-  color: var(--danger);
-  border-color: rgba(242, 85, 90, 0.35);
+  /* out of stock = inactive, not an error: neutral grey, no competing warm hue */
+  color: var(--faint);
+  border-color: var(--border-2);
+}
+
+.tag--checking {
+  color: var(--faint);
+  border-color: var(--border-2);
+}
+
+/* ── Row states (loading / failed) + row actions ──────────────────────────── */
+/* Status cell stacks the action row (tier chip + remove) above the freshness meta. */
+.cell-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.cell-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.row-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  cursor: pointer;
+  color: var(--faint);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
+  transition: color 0.14s var(--ease), background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.row-remove:hover {
+  color: var(--text);
+  background: var(--panel-2);
+  border-color: var(--border-2);
+}
+
+.row-retry {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  padding: 0.22rem 0.7rem;
+  white-space: nowrap;
+  transition: background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.row-retry:hover {
+  background: var(--panel-2);
+  border-color: var(--text);
+}
+
+/* Last-known price on a failed check: kept visible but visibly unverified. */
+.cell-now--stale {
+  color: var(--muted);
+}
+
+.cell-meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+/* Ties a row to the featured panel above it (recognition, not a duplicate item). */
+.cell-meta__flag {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+/* Skeleton bars for a price check in flight. Right-aligned to match .num cells. */
+.skel {
+  display: inline-block;
+  height: 0.95rem;
+  border-radius: 5px;
+  background: linear-gradient(
+    100deg,
+    var(--panel-2) 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    var(--panel-2) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.25s linear infinite;
+}
+
+.skel--price {
+  width: 4.5rem;
+}
+
+.skel--drop {
+  width: 3rem;
+}
+
+.row-status {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+}
+
+/* ── First-run / empty state (teaches by showing a worked example) ─────────── */
+.onboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.75rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 2.25rem;
+  border: 1px dashed var(--border-2);
+  border-radius: var(--r-panel);
+}
+
+.onboard__intro .mark {
+  color: var(--faint);
+}
+
+.onboard__title {
+  margin: 0.6rem 0 0;
+  font-family: var(--display);
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.onboard__lead {
+  margin: 0.55rem 0 1.15rem;
+  max-width: 42ch;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.onboard__cta {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  border-radius: var(--r-control);
+  padding: 0.7rem 1.1rem;
+  font: inherit;
+  font-weight: 700;
+  background: var(--text);
+  color: var(--bg);
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease);
+}
+
+.onboard__cta:hover {
+  background: #ffffff;
+}
+
+.onboard__cta:active {
+  transform: translateY(1px);
+}
+
+.onboard__demo {
+  margin: 0;
+}
+
+.onboard__demo-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.onboard__demo-tag {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.16rem 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  border: 1px solid var(--border-2);
+  color: var(--muted);
+}
+
+/* Mirrors the live featured panel so the example reads as the real thing, recessed
+   one step (lighter border, "Example" caption) so it can't be mistaken for data. */
+.onboard__deal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 1.2rem 1.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-panel);
+  background: var(--panel);
+}
+
+.onboard__deal-name {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.onboard__deal-baseline {
+  margin: 0.5rem 0 0;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.onboard__note {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--faint);
+  text-wrap: pretty;
+}
+
+.onboard__note b {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .onboard {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+  .onboard__deal {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .onboard__deal .featured__signal {
+    align-items: flex-start;
+  }
+}
+
+/* ── Filtered-empty board (dropped-only with nothing live) ─────────────────── */
+.board-blank {
+  margin: 0.5rem 0 0;
+  padding: 1.5rem 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Inline text button (matches a link but is a real <button>). */
+.linkbtn {
+  font: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  color: var(--text);
+  background: none;
+  border: 0;
+  padding: 0;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.linkbtn:hover {
+  color: #ffffff;
+}
+
+/* ── Undo affordance (recover a mistaken "stop tracking") ──────────────────── */
+/* Fixed bottom toast so it stays reachable no matter how long the watchlist is. */
+.undobar {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: min(30rem, calc(100vw - 2rem));
+  padding: 0.7rem 0.8rem 0.7rem 1rem;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-control);
+  background: var(--panel-2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: toast-in 0.22s var(--ease);
+}
+
+.undobar__text {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.undobar__btn {
+  flex: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-pill);
+  padding: 0.32rem 0.85rem;
+  transition: background 0.14s var(--ease), border-color 0.14s var(--ease);
+}
+
+.undobar__btn:hover {
+  background: var(--panel-2);
+  border-color: var(--text);
 }
 
 /* ── Footer ───────────────────────────────────────────────────────────────── */
@@ -317,29 +1135,82 @@ body {
 }
 
 .foot a {
-  color: var(--accent);
+  color: var(--text);
   font-weight: 700;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .foot a:hover {
-  color: var(--accent-2);
-  text-decoration: underline;
+  color: #ffffff;
 }
 
-@keyframes row-in {
+/* ── Motion keyframes ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translate(-50%, 0.6rem);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
   }
 }
 
-/* ── Mobile: collapse the table to stacked rows (< 720px) ─────────────────── */
+@keyframes ping {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.7);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+/* ── Responsive: metric strip ─────────────────────────────────────────────── */
 @media (max-width: 720px) {
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .metric:nth-child(2) {
+    border-left: 1px solid var(--border);
+  }
+  .metric:nth-child(3) {
+    border-left: 0;
+  }
+  .metric:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ── Responsive: collapse the table to stacked rows (< 720px) ─────────────── */
+@media (max-width: 720px) {
+  .featured {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .featured__signal {
+    align-items: flex-start;
+  }
+  .board-tools {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .board-sort {
+    margin-left: auto;
+  }
   .board thead {
     display: none;
   }
@@ -355,6 +1226,9 @@ body {
     border-radius: var(--r-control);
     margin-bottom: 0.75rem;
     padding: 0.4rem 0.6rem;
+  }
+  .board tbody tr:hover td:first-child {
+    box-shadow: none;
   }
   .board tbody td {
     display: flex;
@@ -378,6 +1252,9 @@ body {
   .delta {
     text-align: right;
   }
+  .delta-saved {
+    text-align: right;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -387,5 +1264,8 @@ body {
     animation-duration: 0.001ms !important;
     animation-delay: 0ms !important;
     transition-duration: 0.001ms !important;
+  }
+  .mark__ping {
+    display: none;
   }
 }

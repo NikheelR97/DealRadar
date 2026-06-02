@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-// Mock the constant so the Footer's KOFI-set branch renders.
-vi.mock('./lib/constants', () => ({ KOFI_URL: 'https://ko-fi.com/test' }));
+// Mock only KOFI_URL so the Footer's KOFI-set branch renders; keep the real
+// threshold constants the watchlist derives its deal tiers from.
+vi.mock('./lib/constants', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./lib/constants')>()),
+  KOFI_URL: 'https://ko-fi.com/test',
+}));
 
 const { App } = await import('./App');
 
